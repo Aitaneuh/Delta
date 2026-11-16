@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { api } from '../services/api'
 import { computePositions } from '../services/pgnParser'
 import type { BoardPosition, GameSummary, ParsedGame } from '../services/pgnParser'
@@ -10,10 +10,20 @@ import {
   buildReport,
   evaluatePositions,
   isAnalyzable,
+  uciToSan,
   type GameAnalysis,
+  type MoveGrade,
   type PositionEval,
 } from '../services/gameAnalysis'
+import { reportGame, sideToMove } from '../services/moveScoring'
+import { legalDests, playMove, type Variation } from '../services/variations'
 import { getEcoOpeningName } from '../data/ecoOpenings'
+
+export type ImportPlatform = 'lichess' | 'chesscom'
+
+/** "As many as possible" on the import page. The server allows the same sizes. */
+export const MAX_ACCOUNT_IMPORT = 500
+export const ACCOUNT_IMPORT_SIZES = [MAX_ACCOUNT_IMPORT, 100, 75, 50, 25, 10, 5, 3, 1]
 
 const TERMINATION_LABELS: Record<string, string> = {
   mate: 'checkmate',
@@ -103,12 +113,33 @@ export const useGameStore = defineStore('game', () => {
   const liveEvals = ref<PositionEval[]>([]) // Results so far while an analysis is running
   let activeEngine: PositionEvaluator | null = null
 
+  // Side lines played on the board. They stay in this browser and are never saved.
+  const variations = ref<Variation[]>([])
+  const activeVariation = ref<{ id: number; ply: number } | null>(null) // ply 1 is its first move
+  let nextVariationId = 1
+
+  // Evaluations of variation positions, by FEN. Run one at a time on a second engine.
+  const explorationEvals = ref(new Map<string, PositionEval>())
+  const explorationQueue: string[] = []
+  let explorationRunning = false
+  let explorer: PositionEvaluator | null = null
+  let createExplorer: () => PositionEvaluator = () => new StockfishEngine()
+
   // ==========================================
   // 2. GETTERS
   // ==========================================
   const totalPages = computed(() => Math.max(1, Math.ceil(totalGames.value / pageSize.value)))
 
-  const currentPosition = computed(() => currentPositions.value[currentMoveIndex.value] ?? null)
+  const currentVariation = computed(
+    () => variations.value.find((variation) => variation.id === activeVariation.value?.id) ?? null,
+  )
+
+  const currentPosition = computed<BoardPosition | null>(() => {
+    if (currentVariation.value && activeVariation.value) {
+      return currentVariation.value.moves[activeVariation.value.ply - 1] ?? null
+    }
+    return currentPositions.value[currentMoveIndex.value] ?? null
+  })
 
   const currentFen = computed(() => currentPosition.value?.fen ?? null)
 
@@ -117,16 +148,89 @@ export const useGameStore = defineStore('game', () => {
     return !!game && game.moves_count > 0 && isAnalyzable(game.pgn)
   })
 
+  /** Variations can be played in any standard-chess game; variants have other rules. */
+  const currentDests = computed(() =>
+    currentGame.value && isAnalyzable(currentGame.value.pgn) && currentFen.value
+      ? legalDests(currentFen.value)
+      : new Map(),
+  )
+
   const currentEvals = computed(() => currentGame.value?.analysis?.evals ?? liveEvals.value)
+
+  /** Variations are evaluated automatically once the game has a visible analysis. */
+  const variationEvalsEnabled = computed(
+    () => !!currentGame.value?.analysis && !analysisHidden.value,
+  )
 
   const currentEval = computed(() => {
     if (analysisHidden.value) return null
+    if (currentVariation.value) {
+      if (!variationEvalsEnabled.value || !currentFen.value) return null
+      return explorationEvals.value.get(currentFen.value) ?? null
+    }
     return currentEvals.value[currentMoveIndex.value] ?? null
   })
+
+  /** True while the engine is still working on the variation position being shown. */
+  const isEvaluatingVariation = computed(
+    () => !!currentVariation.value && variationEvalsEnabled.value && !currentEval.value,
+  )
 
   const analysisReport = computed(() => {
     if (analysisHidden.value || !currentGame.value || currentEvals.value.length === 0) return null
     return buildReport(currentGame.value.moves, currentPositions.value, currentEvals.value)
+  })
+
+  /** Each variation move's grade, for the moves whose before and after positions are known. */
+  const variationGrades = computed(() => {
+    const grades = new Map<number, (MoveGrade | null)[]>()
+    if (!variationEvalsEnabled.value) return grades
+
+    for (const variation of variations.value) {
+      const evals: PositionEval[] = []
+      const first = currentEvals.value[variation.startIndex]
+      if (first) {
+        evals.push(first)
+        for (const move of variation.moves) {
+          const evaluation = explorationEvals.value.get(move.fen)
+          if (!evaluation) break
+          evals.push(evaluation)
+        }
+      }
+      const startFen = currentPositions.value[variation.startIndex]!.fen
+      const sans = variation.moves.map((move) => move.san)
+      grades.set(
+        variation.id,
+        reportGame(sans, sideToMove(startFen), evals).moves.map((move) => move.grade),
+      )
+    }
+    return grades
+  })
+
+  /** The grade of the move that led to the position on the board, in the game or a variation. */
+  const currentMoveGrade = computed(() => {
+    if (analysisHidden.value || !currentGame.value) return null
+
+    const variation = currentVariation.value
+    if (variation && activeVariation.value) {
+      const ply = activeVariation.value.ply
+      const grade = variationGrades.value.get(variation.id)?.[ply - 1]
+      if (!grade) return null
+      const before =
+        ply === 1
+          ? currentEvals.value[variation.startIndex]
+          : explorationEvals.value.get(variation.moves[ply - 2]!.fen)
+      return { grade, move: variation.moves[ply - 1]!.san, best: before?.bestSan ?? null }
+    }
+
+    const index = currentMoveIndex.value - 1
+    const grade = analysisReport.value?.moves[index]?.grade
+    if (!grade) return null
+    return {
+      grade,
+      move: currentGame.value.moves[index]!,
+      best: currentEvals.value[index]?.bestSan ?? null,
+    }
   })
 
   const gameMetadata = computed(() => {
@@ -149,9 +253,12 @@ export const useGameStore = defineStore('game', () => {
     }
   })
 
-  const isAtStart = computed(() => currentMoveIndex.value === 0)
+  const isAtStart = computed(() => !activeVariation.value && currentMoveIndex.value === 0)
   const isAtEnd = computed(() => {
     if (!currentGame.value) return true
+    if (currentVariation.value && activeVariation.value) {
+      return activeVariation.value.ply >= currentVariation.value.moves.length
+    }
     return currentMoveIndex.value >= currentGame.value.moves_count
   })
 
@@ -198,12 +305,132 @@ export const useGameStore = defineStore('game', () => {
     })
   }
 
-  function importFromLichess(max: number): Promise<ImportResult> {
-    return api<ImportResult>('/api/lichess/import', {
+  function importFromAccount(
+    platform: ImportPlatform,
+    username: string,
+    max: number,
+  ): Promise<ImportResult> {
+    return api<ImportResult>('/api/import/account', {
       method: 'POST',
-      body: { max, accept_permanent: true },
+      body: { platform, username: username.trim(), max, accept_permanent: true },
     })
   }
+
+  // ---- Variations ----
+
+  /** Plays a move dragged on the board, following the game or a known line when it can. */
+  function playBoardMove(orig: string, dest: string): void {
+    const fen = currentFen.value
+    if (!fen || !currentGame.value || !isAnalyzable(currentGame.value.pgn)) return
+    const move = playMove(fen, orig, dest)
+    if (!move) return
+
+    const variation = currentVariation.value
+    const ply = activeVariation.value?.ply ?? 0
+    const startIndex = variation?.startIndex ?? currentMoveIndex.value
+
+    // The game's own next move just steps forward
+    if (!variation && currentPositions.value[startIndex + 1]?.fen === move.fen) {
+      currentMoveIndex.value = startIndex + 1
+      return
+    }
+
+    const line = [...(variation?.moves.slice(0, ply) ?? []), move]
+    const known = variations.value.find(
+      (other) =>
+        other.startIndex === startIndex &&
+        line.every((lineMove, index) => other.moves[index]?.fen === lineMove.fen),
+    )
+    if (known) {
+      activeVariation.value = { id: known.id, ply: line.length }
+      return
+    }
+
+    // At the end of a variation the move extends it; elsewhere it starts a new one, so no
+    // line is ever lost
+    if (variation && ply === variation.moves.length) {
+      variation.moves.push(move)
+      activeVariation.value = { id: variation.id, ply: line.length }
+      return
+    }
+
+    const created: Variation = { id: nextVariationId++, startIndex, moves: line }
+    variations.value.push(created)
+    currentMoveIndex.value = startIndex
+    activeVariation.value = { id: created.id, ply: line.length }
+  }
+
+  function goToVariationMove(id: number, ply: number): void {
+    const variation = variations.value.find((candidate) => candidate.id === id)
+    if (!variation || ply < 1 || ply > variation.moves.length) return
+    currentMoveIndex.value = variation.startIndex
+    activeVariation.value = { id, ply }
+  }
+
+  function removeVariation(id: number): void {
+    if (activeVariation.value?.id === id) activeVariation.value = null
+    variations.value = variations.value.filter((variation) => variation.id !== id)
+  }
+
+  /** Lets tests replace Stockfish. */
+  function setExplorationEngine(factory: () => PositionEvaluator): void {
+    stopExploration()
+    createExplorer = factory
+  }
+
+  function stopExploration(): void {
+    explorationQueue.length = 0
+    explorer?.terminate()
+    explorer = null
+  }
+
+  function clearVariations(): void {
+    stopExploration()
+    variations.value = []
+    activeVariation.value = null
+    explorationEvals.value = new Map()
+  }
+
+  /** Queues a position. Urgent ones, like the position on the board, go first. */
+  function requestExplorationEval(fen: string, urgent: boolean): void {
+    if (explorationEvals.value.has(fen)) return
+    const queued = explorationQueue.indexOf(fen)
+    if (queued !== -1) {
+      if (!urgent) return
+      explorationQueue.splice(queued, 1)
+    }
+    if (urgent) explorationQueue.unshift(fen)
+    else explorationQueue.push(fen)
+    void runExplorationQueue()
+  }
+
+  async function runExplorationQueue(): Promise<void> {
+    if (explorationRunning) return
+    explorationRunning = true
+    try {
+      while (explorationQueue.length > 0 && variationEvalsEnabled.value) {
+        const fen = explorationQueue.shift()!
+        if (explorationEvals.value.has(fen)) continue
+        explorer ??= createExplorer()
+        const evaluation = await explorer.evaluate(fen, ANALYSIS_LIMITS)
+        explorationEvals.value.set(fen, { ...evaluation, bestSan: uciToSan(fen, evaluation.best) })
+      }
+    } catch (err) {
+      if (!(err instanceof EngineStoppedError)) {
+        analysisError.value = err instanceof Error ? err.message : 'The engine stopped.'
+      }
+    } finally {
+      explorationRunning = false
+    }
+  }
+
+  // Evaluates the variation on the board, starting with the position being shown
+  watch([currentFen, variationEvalsEnabled, () => currentVariation.value?.moves.length], () => {
+    const variation = currentVariation.value
+    if (!variation || !variationEvalsEnabled.value || !currentFen.value) return
+    requestExplorationEval(currentFen.value, true)
+    for (const move of variation.moves) requestExplorationEval(move.fen, false)
+  })
 
   function cancelAnalysis(): void {
     activeEngine?.terminate()
@@ -252,6 +479,7 @@ export const useGameStore = defineStore('game', () => {
 
   async function fetchGame(id: string): Promise<void> {
     cancelAnalysis()
+    clearVariations()
     analysisError.value = null
     loading.value = true
     error.value = null
@@ -273,6 +501,12 @@ export const useGameStore = defineStore('game', () => {
 
   function nextMove(): void {
     if (!currentGame.value) return
+    if (currentVariation.value && activeVariation.value) {
+      if (activeVariation.value.ply < currentVariation.value.moves.length) {
+        activeVariation.value.ply++
+      }
+      return
+    }
     if (currentMoveIndex.value < currentGame.value.moves_count) {
       currentMoveIndex.value++
     }
@@ -280,6 +514,12 @@ export const useGameStore = defineStore('game', () => {
 
   /************ Move Engine Traversal controllers ************/
   function prevMove(): void {
+    if (activeVariation.value) {
+      // Stepping back from a variation's first move returns to the game where it branched
+      if (activeVariation.value.ply > 1) activeVariation.value.ply--
+      else activeVariation.value = null
+      return
+    }
     if (currentMoveIndex.value > 0) {
       currentMoveIndex.value--
     }
@@ -288,21 +528,25 @@ export const useGameStore = defineStore('game', () => {
   function goToMove(index: number): void {
     if (!currentGame.value) return
     if (index >= 0 && index <= currentGame.value.moves_count) {
+      activeVariation.value = null
       currentMoveIndex.value = index
     }
   }
 
   function goToStart(): void {
+    activeVariation.value = null
     currentMoveIndex.value = 0
   }
 
   function goToEnd(): void {
     if (!currentGame.value) return
+    activeVariation.value = null
     currentMoveIndex.value = currentGame.value.moves_count
   }
 
   function reset(): void {
     cancelAnalysis()
+    clearVariations()
     currentGame.value = null
     currentPositions.value = []
     currentMoveIndex.value = 0
@@ -325,11 +569,15 @@ export const useGameStore = defineStore('game', () => {
     isAnalyzing,
     analysisError,
     analysisHidden,
+    variations,
+    activeVariation,
 
     // Core Engine Getters
     totalPages,
     currentPosition,
     currentFen,
+    currentDests,
+    currentVariation,
     gameMetadata,
     isAtStart,
     isAtEnd,
@@ -337,13 +585,22 @@ export const useGameStore = defineStore('game', () => {
     currentEvals,
     currentEval,
     analysisReport,
+    variationEvalsEnabled,
+    isEvaluatingVariation,
+    variationGrades,
+    currentMoveGrade,
 
     // Core Engine Actions
     fetchGames,
     updateFilters,
     goToPage,
     importPgn,
-    importFromLichess,
+    importFromAccount,
+    playBoardMove,
+    goToVariationMove,
+    removeVariation,
+    setExplorationEngine,
+    stopExploration,
     startAnalysis,
     cancelAnalysis,
     fetchGame,

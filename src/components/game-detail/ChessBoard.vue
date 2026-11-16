@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { Chessground } from 'chessground'
 import type { Api } from 'chessground/api'
+import type { Config } from 'chessground/config'
 import type { Color, Key } from 'chessground/types'
 
 // Official Lichess Layout & Theme Asset Streams
@@ -12,23 +13,42 @@ import 'chessground/assets/chessground.cburnett.css'  // Standard crisp piece se
 interface Props {
   fen?: string
   orientation?: 'white' | 'black'
-  interactive?: boolean
   lastMove?: string[] | null
   check?: Color | false
   arrow?: string | null // UCI move to draw, e.g. "e2e4"
+  // Legal moves for the side to move. When empty, pieces can't be moved.
+  dests?: Map<string, string[]>
 }
 
 const props = withDefaults(defineProps<Props>(), {
   fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
   orientation: 'white',
-  interactive: false,
   lastMove: null,
   check: false,
   arrow: null,
+  dests: () => new Map(),
 })
+
+const emit = defineEmits<{
+  move: [orig: string, dest: string]
+}>()
 
 const boardContainer = ref<HTMLDivElement | null>(null)
 let boardApi: Api | null = null
+
+function positionConfig(): Config {
+  const turnColor: Color = props.fen.split(' ')[1] === 'b' ? 'black' : 'white'
+  return {
+    fen: props.fen,
+    turnColor,
+    lastMove: (props.lastMove as Key[] | null) ?? undefined,
+    check: props.check,
+    movable: {
+      color: props.dests.size > 0 ? turnColor : undefined,
+      dests: props.dests as Map<Key, Key[]>,
+    },
+  }
+}
 
 function showArrow() {
   const move = props.arrow
@@ -39,19 +59,31 @@ function showArrow() {
   )
 }
 
+/** Puts the board back in sync with the props, e.g. after a promotion or a refused move. */
+function syncBoard() {
+  boardApi?.set(positionConfig())
+  showArrow()
+}
+
 onMounted(() => {
   if (boardContainer.value) {
     boardApi = Chessground(boardContainer.value, {
-      fen: props.fen,
-      lastMove: (props.lastMove as Key[] | null) ?? undefined,
-      check: props.check,
+      ...positionConfig(),
       orientation: props.orientation,
       viewOnly: false, // Must be false so the board registers right-clicks for shapes
       movable: {
+        ...positionConfig().movable,
         free: false,
-        color: props.interactive ? 'both' : undefined, // Controls piece dragging based on prop
-        dests: undefined
+        showDests: true,
+        events: {
+          after: (orig, dest) => {
+            emit('move', orig, dest)
+            // The parent answers with a new position; this covers a move it didn't accept
+            void nextTick(syncBoard)
+          },
+        },
       },
+      premovable: { enabled: false },
       drawable: {
         enabled: true,
         visible: true,
@@ -72,15 +104,7 @@ onMounted(() => {
 
 watch(() => props.arrow, showArrow)
 
-watch(() => props.fen, (newFen) => {
-  if (boardApi && newFen) {
-    boardApi.set({
-      fen: newFen,
-      lastMove: (props.lastMove as Key[] | null) ?? undefined,
-      check: props.check,
-    })
-  }
-})
+watch(() => [props.fen, props.dests], syncBoard)
 
 onBeforeUnmount(() => {
   boardApi?.destroy()
@@ -90,14 +114,6 @@ onBeforeUnmount(() => {
 watch(() => props.orientation, (newOrientation) => {
   if (boardApi) {
     boardApi.set({ orientation: newOrientation })
-  }
-})
-
-watch(() => props.interactive, (isNewInteractive) => {
-  if (boardApi) {
-    boardApi.set({
-      movable: { color: isNewInteractive ? 'both' : undefined }
-    })
   }
 })
 </script>

@@ -20,7 +20,7 @@ export const config = {
   // How many reverse proxies sit in front of the app. Used to read the real visitor IP.
   trustProxyHops: Number(process.env.TRUST_PROXY_HOPS ?? 1),
   lichessUrl: (process.env.LICHESS_URL ?? 'https://lichess.org').replace(/\/+$/, ''),
-  lichessClientId: new URL(publicUrl).host,
+  chesscomUrl: (process.env.CHESSCOM_URL ?? 'https://api.chess.com').replace(/\/+$/, ''),
   site: {
     operatorName: legal('OPERATOR_NAME', '[your full name]'),
     operatorAddress: legal('OPERATOR_ADDRESS', '[your postal address]'),

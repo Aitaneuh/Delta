@@ -20,7 +20,6 @@
     "admin": "node server/admin.ts"
   },
   "dependencies": {
-    "@fastify/cookie": "^11.1.5",
     "@fastify/helmet": "^13.2.0",
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/static": "^9.3.0",

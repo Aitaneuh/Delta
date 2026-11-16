@@ -11,28 +11,13 @@
       <li><router-link to="/import">Import</router-link></li>
       <li><router-link to="/stats">Statistics</router-link></li>
     </ul>
-    <div class="account">
-      <template v-if="auth.ready">
-        <template v-if="auth.user">
-          <span class="username" :title="auth.user.username">{{ auth.user.username }}</span>
-          <button type="button" class="account-action" @click="auth.signOut()">Sign out</button>
-        </template>
-        <a v-else :href="signInHref" class="account-action">Sign in with Lichess</a>
-      </template>
-    </div>
+    <!-- Same width as the logo column, so the links stay centered -->
+    <div class="spacer" aria-hidden="true"></div>
   </nav>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { signInUrl, useAuthStore } from '@/stores/authStore'
-
 const logoUrl = '/images/delta_analyzer_logo_white_red.png'
-
-const auth = useAuthStore()
-const route = useRoute()
-const signInHref = computed(() => signInUrl(route.fullPath))
 </script>
 
 <style scoped>
@@ -77,47 +62,20 @@ span {
   border-bottom: none;
 }
 
-.account {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  font-size: 14px;
-}
-
-.username {
-  max-width: 12rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.account-action {
-  color: #9ca3af;
-  cursor: pointer;
-  text-decoration: underline;
-  white-space: nowrap;
-}
-
-.account-action:hover {
-  color: var(--text-color);
-}
-
 .router-link-active {
   border-bottom: 2px solid var(--accent-color);
+}
+
+.spacer {
+  display: none;
 }
 
 /* From tablet up, equal-width side columns keep the links centered in the bar. */
 @media (min-width: 900px) {
   .logo,
-  .account {
+  .spacer {
+    display: block;
     flex: 1 1 0;
-  }
-
-  .account {
-    justify-content: flex-end;
   }
 }
 </style>

@@ -1,31 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
 import { useGameStore } from '@/stores/gameStore'
-import { signInUrl, useAuthStore } from '@/stores/authStore'
 import { GRADE_SYMBOLS, formatEval } from '@/services/gameAnalysis'
 import EvalGraph from './EvalGraph.vue'
 
 const store = useGameStore()
-const auth = useAuthStore()
-const route = useRoute()
-const signInHref = computed(() => signInUrl(route.fullPath))
 
 const game = computed(() => store.currentGame)
 const totalPositions = computed(() => (game.value?.moves_count ?? 0) + 1)
 const progress = computed(() => (store.currentEvals.length / totalPositions.value) * 100)
 
 const currentGrade = computed(() => {
-  const index = store.currentMoveIndex - 1
-  const grade = store.analysisReport?.moves[index]?.grade
-  if (!grade || !game.value) return null
-
-  return {
-    symbol: GRADE_SYMBOLS[grade],
-    name: grade,
-    move: game.value.moves[index],
-    best: store.currentEvals[index]?.bestSan ?? null,
-  }
+  const current = store.currentMoveGrade
+  if (!current) return null
+  return { symbol: GRADE_SYMBOLS[current.grade], name: current.grade, ...current }
 })
 
 const statRows = computed(() => {
@@ -89,21 +77,20 @@ const statRows = computed(() => {
         everyone to see.
       </p>
       <button
-        v-if="auth.user"
         type="button"
         class="shrink-0 cursor-pointer bg-accent hover:bg-accent-dark text-white font-bold py-2 px-6 rounded transition text-sm"
         @click="store.startAnalysis()"
       >
         Analyze game
       </button>
-      <a
-        v-else
-        :href="signInHref"
-        class="shrink-0 text-center bg-accent hover:bg-accent-dark text-white font-bold py-2 px-6 rounded transition text-sm"
-      >
-        Sign in to analyze
-      </a>
     </div>
+
+    <p v-if="store.canAnalyze" class="mt-3 text-xs text-gray-500">
+      Move the pieces on the board to explore other lines<template
+        v-if="store.variationEvalsEnabled"
+        >; Stockfish evaluates them as you go</template
+      >.
+    </p>
 
     <!-- Running -->
     <div v-if="store.isAnalyzing" class="mb-4">
@@ -145,7 +132,18 @@ const statRows = computed(() => {
     <!-- Finished -->
     <template v-if="game.analysis && !store.analysisHidden">
       <div class="mt-4 text-sm text-gray-300 wrap-anywhere">
-        <p v-if="store.currentEval">
+        <p v-if="store.currentVariation" class="mb-1 text-xs text-gray-500">
+          Exploring a variation.
+          <button
+            type="button"
+            class="cursor-pointer text-accent hover:underline"
+            @click="store.goToMove(store.currentVariation.startIndex)"
+          >
+            Back to the game
+          </button>
+        </p>
+        <p v-if="store.isEvaluatingVariation" class="text-gray-500">Evaluating...</p>
+        <p v-else-if="store.currentEval">
           <strong class="text-gray-100">{{ formatEval(store.currentEval) }}</strong>
           <span v-if="store.currentEval.bestSan" class="ml-3 text-gray-400">
             Engine's move here: <span class="text-gray-200">{{ store.currentEval.bestSan }}</span>

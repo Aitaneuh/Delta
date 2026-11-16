@@ -1,8 +1,9 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { flushPromises } from '@vue/test-utils'
 import { createEmptyFilters, useGameStore } from '../stores/gameStore'
 import { parsePGN } from '../services/pgnParser'
-import { EngineStoppedError } from '../services/engine'
+import { EngineStoppedError, type PositionEvaluator } from '../services/engine'
 
 const [game] = parsePGN('[White "a"]\n[Black "b"]\n\n1. e4 c5 2. d4 cxd4 *')
 
@@ -83,10 +84,10 @@ describe('game store', () => {
       body: { pgn: '1. e4 *', accept_permanent: true },
     })
 
-    await store.importFromLichess(50)
+    await store.importFromAccount('chesscom', '  Hikaru ', 75)
     expect(calls[1]).toMatchObject({
-      url: '/api/lichess/import',
-      body: { max: 50, accept_permanent: true },
+      url: '/api/import/account',
+      body: { platform: 'chesscom', username: 'Hikaru', max: 75, accept_permanent: true },
     })
   })
 
@@ -110,8 +111,8 @@ describe('game store', () => {
       'fetch',
       vi.fn(async (_url: string, init: RequestInit = {}) =>
         init.method === 'PUT'
-          ? new Response(JSON.stringify({ error: 'Please sign in with Lichess first.' }), {
-              status: 401,
+          ? new Response(JSON.stringify({ error: 'This analysis is not valid.' }), {
+              status: 400,
             })
           : new Response(JSON.stringify(game), { status: 200 }),
       ),
@@ -120,7 +121,7 @@ describe('game store', () => {
     await store.fetchGame('abc')
     await store.startAnalysis(evaluator())
 
-    expect(store.analysisError).toBe('Please sign in with Lichess first.')
+    expect(store.analysisError).toBe('This analysis is not valid.')
     expect(store.isAnalyzing).toBe(false)
   })
 
@@ -185,5 +186,95 @@ describe('game store', () => {
 
     expect(new Set(seen).size).toBe(5)
     expect(store.currentFen).toBe(store.currentGame!.final_fen)
+  })
+})
+
+describe('variations', () => {
+  beforeEach(() => {
+    stubApi((call) => (call.method === 'PUT' ? call.body : game))
+    setActivePinia(createPinia())
+  })
+
+  it("follows the game when the game's own move is played", async () => {
+    const store = useGameStore()
+    await store.fetchGame('abc')
+
+    store.playBoardMove('e2', 'e4')
+    expect(store.currentMoveIndex).toBe(1)
+    expect(store.variations).toHaveLength(0)
+  })
+
+  it('records side lines without losing any', async () => {
+    const store = useGameStore()
+    await store.fetchGame('abc')
+    store.goToMove(1) // After 1. e4
+
+    store.playBoardMove('e7', 'e5')
+    store.playBoardMove('g1', 'f3')
+    expect(store.variations).toHaveLength(1)
+    expect(store.variations[0]!.moves.map((move) => move.san)).toEqual(['e5', 'Nf3'])
+    expect(store.variations[0]!.moves[0]).toMatchObject({ moveNumber: 1, color: 'black' })
+    expect(store.isAtEnd).toBe(true)
+
+    // A different move in the middle starts a second line instead of overwriting the first
+    store.prevMove()
+    store.playBoardMove('b1', 'c3')
+    expect(store.variations.map((v) => v.moves.map((move) => move.san))).toEqual([
+      ['e5', 'Nf3'],
+      ['e5', 'Nc3'],
+    ])
+
+    // Replaying a known move enters the existing line
+    store.goToMove(1)
+    store.playBoardMove('e7', 'e5')
+    expect(store.activeVariation).toEqual({ id: store.variations[0]!.id, ply: 1 })
+
+    // Stepping back from the first move returns to the game
+    store.prevMove()
+    expect(store.activeVariation).toBeNull()
+    expect(store.currentMoveIndex).toBe(1)
+
+    store.removeVariation(store.variations[0]!.id)
+    expect(store.variations).toHaveLength(1)
+  })
+
+  it('ignores illegal moves', async () => {
+    const store = useGameStore()
+    await store.fetchGame('abc')
+
+    store.playBoardMove('e2', 'e5')
+    expect(store.currentMoveIndex).toBe(0)
+    expect(store.variations).toHaveLength(0)
+  })
+
+  it('evaluates and grades variations once the game is analyzed', async () => {
+    const store = useGameStore()
+    await store.fetchGame('abc')
+    await store.startAnalysis(evaluator(12))
+    store.setExplorationEngine(evaluator(500))
+
+    store.goToMove(1)
+    store.playBoardMove('f7', 'f6') // A bad reply, judging by the evaluator's +5.00
+    expect(store.isEvaluatingVariation).toBe(true)
+    await flushPromises()
+
+    expect(store.isEvaluatingVariation).toBe(false)
+    expect(store.currentEval).toMatchObject({ cp: 500 })
+    expect(store.variationGrades.get(store.variations[0]!.id)).toEqual(['blunder'])
+    expect(store.currentMoveGrade).toMatchObject({ grade: 'blunder', move: 'f6' })
+  })
+
+  it('does not evaluate variations when the analysis is off', async () => {
+    const store = useGameStore()
+    await store.fetchGame('abc')
+    const create = vi.fn<() => PositionEvaluator>(evaluator())
+    store.setExplorationEngine(create)
+
+    store.goToMove(1)
+    store.playBoardMove('e7', 'e5')
+    await flushPromises()
+
+    expect(store.currentEval).toBeNull()
+    expect(create).not.toHaveBeenCalled()
   })
 })

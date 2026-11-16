@@ -1,8 +1,18 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { signInUrl, useAuthStore } from '@/stores/authStore'
-import { useGameStore, type ImportResult } from '@/stores/gameStore'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  ACCOUNT_IMPORT_SIZES,
+  MAX_ACCOUNT_IMPORT,
+  useGameStore,
+  type ImportPlatform,
+  type ImportResult,
+} from '@/stores/gameStore'
+
+const PLATFORMS: { value: ImportPlatform; label: string }[] = [
+  { value: 'lichess', label: 'Lichess' },
+  { value: 'chesscom', label: 'Chess.com' },
+]
 
 const pgnText = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -11,16 +21,18 @@ const importError = ref<string | null>(null)
 const requestAnalysis = ref(false)
 const isSubmitting = ref(false)
 const acceptedPermanent = ref(false)
-const lichessCount = ref(25)
-const lichessResult = ref<ImportResult | null>(null)
+const platform = ref<ImportPlatform>('lichess')
+const username = ref('')
+const accountCount = ref(25)
+const accountResult = ref<ImportResult | null>(null)
 
 const router = useRouter()
-const route = useRoute()
 const store = useGameStore()
-const auth = useAuthStore()
 
-const signInFailed = computed(() => route.query.signin === 'failed')
-const signInHref = computed(() => signInUrl('/import'))
+function countLabel(count: number): string {
+  if (count === MAX_ACCOUNT_IMPORT) return `As many as possible (up to ${count})`
+  return count === 1 ? 'Last game' : `Last ${count} games`
+}
 
 // Handle raw file upload
 const handleFileUpload = (event: Event) => {
@@ -51,7 +63,7 @@ const handleFileUpload = (event: Event) => {
 // Upload the PGN, then open the result
 const handleSubmit = async () => {
   importError.value = null
-  lichessResult.value = null
+  accountResult.value = null
 
   if (!pgnText.value.trim()) {
     importError.value = 'Please paste a PGN or import a file.'
@@ -79,15 +91,25 @@ const handleSubmit = async () => {
   }
 }
 
-const handleLichessImport = async () => {
+const handleAccountImport = async () => {
   importError.value = null
-  lichessResult.value = null
+  accountResult.value = null
+
+  if (!username.value.trim()) {
+    importError.value = 'Please enter a username.'
+    return
+  }
+
   isSubmitting.value = true
 
   try {
-    lichessResult.value = await store.importFromLichess(lichessCount.value)
+    accountResult.value = await store.importFromAccount(
+      platform.value,
+      username.value,
+      accountCount.value,
+    )
   } catch (error) {
-    importError.value = error instanceof Error ? error.message : 'Failed to import your games.'
+    importError.value = error instanceof Error ? error.message : 'Failed to import the games.'
   } finally {
     isSubmitting.value = false
   }
@@ -110,157 +132,172 @@ const handleLichessImport = async () => {
         Imported games are public. <strong>Once a game is uploaded, it can't be deleted.</strong>
       </div>
 
-      <p v-if="!auth.ready" class="text-sm text-gray-500">Loading...</p>
+      <label class="flex items-start gap-3 cursor-pointer select-none mb-8">
+        <input
+          v-model="acceptedPermanent"
+          type="checkbox"
+          class="mt-0.5 w-4 h-4 shrink-0 rounded accent-accent"
+        />
+        <span class="text-sm font-medium text-gray-300">
+          I understand that games I upload are public and can't be deleted, and I accept the
+          <router-link to="/terms" class="text-accent hover:underline">Terms of Service</router-link
+          >.
+        </span>
+      </label>
 
-      <!-- Signed out -->
-      <div v-else-if="!auth.user" class="text-center py-6">
-        <p v-if="signInFailed" role="alert" class="mb-4 text-sm text-red-400">
-          Sign-in with Lichess didn't complete. Please try again.
+      <!-- From a Lichess or Chess.com player -->
+      <form class="mb-8" @submit.prevent="handleAccountImport">
+        <h2 class="text-sm font-semibold text-gray-300 mb-1">Import a player's games</h2>
+        <p class="text-sm text-gray-500 mb-3">
+          Imports the most recent finished standard-chess games of any Lichess or Chess.com player.
+          Games already on the site are skipped.
         </p>
-        <p class="text-sm text-gray-400 mb-4">Sign in with your Lichess account to import games.</p>
-        <a
-          :href="signInHref"
-          class="inline-block bg-accent hover:bg-accent-dark text-white font-bold py-2.5 px-6 rounded shadow transition text-sm"
-        >
-          Sign in with Lichess
-        </a>
-      </div>
-
-      <!-- Signed in -->
-      <template v-else>
-        <label class="flex items-start gap-3 cursor-pointer select-none mb-8">
-          <input
-            v-model="acceptedPermanent"
-            type="checkbox"
-            class="mt-0.5 w-4 h-4 shrink-0 rounded accent-accent"
-          />
-          <span class="text-sm font-medium text-gray-300">
-            I understand that games I upload are public and can't be deleted, and I accept the
-            <router-link to="/terms" class="text-accent hover:underline"
-              >Terms of Service</router-link
-            >.
-          </span>
-        </label>
-
-        <!-- From Lichess -->
-        <section class="mb-8">
-          <h2 class="text-sm font-semibold text-gray-300 mb-1">Import from Lichess</h2>
-          <p class="text-sm text-gray-500 mb-3">
-            Imports the most recent finished games of {{ auth.user.username }}. Games already on the
-            site are skipped.
-          </p>
-          <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-            <select
-              v-model.number="lichessCount"
-              aria-label="Number of games to import"
-              class="bg-[#1a1d21] border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
-            >
-              <option :value="10">Last 10 games</option>
-              <option :value="25">Last 25 games</option>
-              <option :value="50">Last 50 games</option>
-              <option :value="100">Last 100 games</option>
-            </select>
-            <button
-              type="button"
-              :disabled="isSubmitting || !acceptedPermanent"
-              class="cursor-pointer disabled:cursor-not-allowed bg-accent hover:bg-accent-dark disabled:bg-gray-700 text-white font-bold py-2 px-6 rounded shadow transition text-sm"
-              @click="handleLichessImport"
-            >
-              {{ isSubmitting ? 'Importing...' : 'Import my Lichess games' }}
-            </button>
-          </div>
-          <p v-if="lichessResult" role="status" class="mt-3 text-sm text-green-500">
-            Imported {{ lichessResult.created }} new
-            {{ lichessResult.created === 1 ? 'game' : 'games'
-            }}<template v-if="lichessResult.duplicates"
-              >, {{ lichessResult.duplicates }} already on the site</template
-            >.
-            <router-link to="/" class="underline">View games</router-link>
-          </p>
-        </section>
-
-        <div class="border-b border-gray-800 my-6"></div>
-
-        <!-- From a PGN -->
-        <h2 class="text-sm font-semibold text-gray-300 mb-3">Upload a PGN</h2>
-        <div class="mb-6">
-          <label for="pgn-input" class="block text-sm font-semibold text-gray-400 mb-2">
-            Paste PGN here
-          </label>
-          <textarea
-            id="pgn-input"
-            v-model="pgnText"
-            rows="8"
-            placeholder='[Event "Live Chess"]...'
-            class="w-full bg-[#1a1d21] border border-gray-700 rounded p-3 text-sm font-mono text-gray-200 outline-none focus:border-accent resize-y transition"
-          ></textarea>
-        </div>
 
         <div
-          class="mb-6 flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+          role="radiogroup"
+          aria-label="Site"
+          class="inline-flex rounded border border-gray-700 mb-3 overflow-hidden"
         >
-          <span class="text-sm font-semibold text-gray-400"> Or import a PGN file </span>
-
-          <div
-            class="flex min-w-0 items-center space-x-2 bg-[#1a1d21] border border-gray-700 rounded px-3 py-1.5 text-sm"
-          >
-            <button
-              type="button"
-              class="shrink-0 cursor-pointer bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs px-3 py-1 rounded transition border border-gray-600"
-              @click="fileInput?.click()"
-            >
-              Browse...
-            </button>
-            <span class="min-w-0 text-xs text-gray-500 truncate max-w-50">
-              {{ selectedFileName }}
-            </span>
-            <input
-              ref="fileInput"
-              type="file"
-              accept=".pgn"
-              class="hidden"
-              @change="handleFileUpload"
-            />
-          </div>
-        </div>
-
-        <div class="mb-6">
-          <label class="flex items-center space-x-3 cursor-pointer group select-none">
-            <input
-              v-model="requestAnalysis"
-              type="checkbox"
-              class="w-4 h-4 rounded accent-accent bg-[#1a1d21] border-gray-700"
-            />
-            <span class="text-sm font-medium text-gray-400 group-hover:text-gray-200 transition">
-              Request a computer analysis (single-game imports)
-            </span>
-          </label>
-        </div>
-
-        <div class="flex justify-center">
           <button
-            :disabled="isSubmitting || !acceptedPermanent"
-            class="cursor-pointer disabled:cursor-not-allowed w-full sm:w-auto justify-center flex items-center space-x-2 bg-accent hover:bg-accent-dark disabled:bg-gray-700 text-white font-bold py-2.5 px-6 rounded shadow transition text-sm tracking-wide"
-            @click="handleSubmit"
+            v-for="option in PLATFORMS"
+            :key="option.value"
+            type="button"
+            role="radio"
+            :aria-checked="platform === option.value"
+            class="cursor-pointer px-4 py-1.5 text-sm transition"
+            :class="
+              platform === option.value
+                ? 'bg-accent text-white font-semibold'
+                : 'bg-[#1a1d21] text-gray-400 hover:text-gray-200'
+            "
+            @click="platform = option.value"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="2.5"
-              stroke="currentColor"
-              class="w-4 h-4"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
-              />
-            </svg>
-            <span>{{ isSubmitting ? 'IMPORTING...' : 'IMPORT A GAME' }}</span>
+            {{ option.label }}
           </button>
         </div>
-      </template>
+
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+          <input
+            v-model="username"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            maxlength="30"
+            :placeholder="`${platform === 'lichess' ? 'Lichess' : 'Chess.com'} username`"
+            aria-label="Username"
+            class="min-w-0 sm:flex-1 bg-[#1a1d21] border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
+          />
+          <select
+            v-model.number="accountCount"
+            aria-label="Number of games to import"
+            class="bg-[#1a1d21] border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
+          >
+            <option v-for="count in ACCOUNT_IMPORT_SIZES" :key="count" :value="count">
+              {{ countLabel(count) }}
+            </option>
+          </select>
+          <button
+            type="submit"
+            :disabled="isSubmitting || !acceptedPermanent"
+            class="cursor-pointer disabled:cursor-not-allowed bg-accent hover:bg-accent-dark disabled:bg-gray-700 text-white font-bold py-2 px-6 rounded shadow transition text-sm whitespace-nowrap"
+          >
+            {{ isSubmitting ? 'Importing...' : 'Import games' }}
+          </button>
+        </div>
+        <p v-if="isSubmitting && accountCount > 100" class="mt-3 text-sm text-gray-500">
+          Downloading many games can take a minute.
+        </p>
+        <p v-if="accountResult" role="status" class="mt-3 text-sm text-green-500">
+          Imported {{ accountResult.created }} new
+          {{ accountResult.created === 1 ? 'game' : 'games'
+          }}<template v-if="accountResult.duplicates"
+            >, {{ accountResult.duplicates }} already on the site</template
+          >.
+          <router-link to="/" class="underline">View games</router-link>
+        </p>
+      </form>
+
+      <div class="border-b border-gray-800 my-6"></div>
+
+      <!-- From a PGN -->
+      <h2 class="text-sm font-semibold text-gray-300 mb-3">Upload a PGN</h2>
+      <div class="mb-6">
+        <label for="pgn-input" class="block text-sm font-semibold text-gray-400 mb-2">
+          Paste PGN here
+        </label>
+        <textarea
+          id="pgn-input"
+          v-model="pgnText"
+          rows="8"
+          placeholder='[Event "Live Chess"]...'
+          class="w-full bg-[#1a1d21] border border-gray-700 rounded p-3 text-sm font-mono text-gray-200 outline-none focus:border-accent resize-y transition"
+        ></textarea>
+      </div>
+
+      <div
+        class="mb-6 flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+      >
+        <span class="text-sm font-semibold text-gray-400"> Or import a PGN file </span>
+
+        <div
+          class="flex min-w-0 items-center space-x-2 bg-[#1a1d21] border border-gray-700 rounded px-3 py-1.5 text-sm"
+        >
+          <button
+            type="button"
+            class="shrink-0 cursor-pointer bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs px-3 py-1 rounded transition border border-gray-600"
+            @click="fileInput?.click()"
+          >
+            Browse...
+          </button>
+          <span class="min-w-0 text-xs text-gray-500 truncate max-w-50">
+            {{ selectedFileName }}
+          </span>
+          <input
+            ref="fileInput"
+            type="file"
+            accept=".pgn"
+            class="hidden"
+            @change="handleFileUpload"
+          />
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <label class="flex items-center space-x-3 cursor-pointer group select-none">
+          <input
+            v-model="requestAnalysis"
+            type="checkbox"
+            class="w-4 h-4 rounded accent-accent bg-[#1a1d21] border-gray-700"
+          />
+          <span class="text-sm font-medium text-gray-400 group-hover:text-gray-200 transition">
+            Request a computer analysis (single-game imports)
+          </span>
+        </label>
+      </div>
+
+      <div class="flex justify-center">
+        <button
+          :disabled="isSubmitting || !acceptedPermanent"
+          class="cursor-pointer disabled:cursor-not-allowed w-full sm:w-auto justify-center flex items-center space-x-2 bg-accent hover:bg-accent-dark disabled:bg-gray-700 text-white font-bold py-2.5 px-6 rounded shadow transition text-sm tracking-wide"
+          @click="handleSubmit"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="2.5"
+            stroke="currentColor"
+            class="w-4 h-4"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
+            />
+          </svg>
+          <span>{{ isSubmitting ? 'IMPORTING...' : 'IMPORT A GAME' }}</span>
+        </button>
+      </div>
 
       <p
         v-if="importError"

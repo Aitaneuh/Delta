@@ -18,15 +18,13 @@ const site = useSiteInfo()
       <h2>What is collected</h2>
       <ul>
         <li>
-          <strong>Your account:</strong> when you sign in with Lichess, your Lichess ID and username
-          and the dates you signed up and last signed in. No password or email address is received,
-          and the access token from Lichess is revoked immediately after sign-in.
+          <strong>No accounts:</strong> there is no sign-in, so no username, password or email
+          address is collected from visitors.
         </li>
         <li>
           <strong>Games:</strong> uploaded games and their computer analysis are published on this
           site. A game contains the names and ratings of <em>both</em> players, the date, the moves
-          and a link to the original game, if any. The site also records which account uploaded each
-          game; this isn't displayed.
+          and a link to the original game, if any. The site doesn't record who uploaded a game.
         </li>
         <li>
           <strong>Technical data:</strong> your IP address is used briefly, in memory, to limit
@@ -37,17 +35,13 @@ const site = useSiteInfo()
 
       <h2>Cookies</h2>
       <p>
-        Only strictly necessary cookies are used: <code>delta_session</code> keeps you signed in (30
-        days) and <code>delta_login</code> protects the sign-in process (10 minutes). There are no
-        advertising or analytics cookies, so no consent banner is needed.
+        This site doesn't set any cookies. There are no advertising or analytics cookies, so no
+        consent banner is needed.
       </p>
 
       <h2>Why your data is used (legal basis)</h2>
       <ul>
-        <li>
-          To provide your account and publish the games you upload: performance of our agreement
-          with you.
-        </li>
+        <li>To publish the games you upload: performance of our agreement with you.</li>
         <li>
           To keep a public archive of chess games, including the names of opponents as they appear
           in the game record, and to protect the site from abuse: legitimate interests.
@@ -58,14 +52,13 @@ const site = useSiteInfo()
       <p>
         Games are public, so anyone can see them. The site is self-hosted in
         {{ site.hostingCountry }} without outside hosting or analytics providers. Your data is not
-        sold. Lichess receives a request when you sign in or import games. Fonts and the chess
-        engine are served by this site itself, and engine analysis runs in your browser.
+        sold. When you import a player's games, this server asks Lichess or Chess.com for that
+        player's public games; your IP address isn't sent to them. Fonts and the chess engine are
+        served by this site itself, and engine analysis runs in your browser.
       </p>
 
       <h2>How long it is kept</h2>
       <ul>
-        <li>Sign-in sessions: up to 30 days, or until you sign out.</li>
-        <li>Accounts: until you ask for your account to be erased.</li>
         <li>
           Games and analyses: <strong>permanently</strong>. Users can't delete a game once it's
           uploaded.
@@ -83,8 +76,7 @@ const site = useSiteInfo()
       <p>
         <strong>This applies even though games are permanent.</strong> If you are a player in a game
         and make a valid erasure request, including if you never used this site, your name and links
-        identifying you are removed from those games and any account of yours is deleted. The
-        anonymous moves stay.
+        identifying you are removed from those games. The anonymous moves stay.
       </p>
       <p>You also have the right to complain to your data protection authority.</p>
     </template>
