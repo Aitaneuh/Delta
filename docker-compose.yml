@@ -19,6 +19,8 @@ services:
 
   app:
     build: .
+    # Portainer runs "docker compose up" without --build, so without this it keeps the old image forever
+    pull_policy: build
     restart: unless-stopped
     depends_on:
       db:

@@ -32,7 +32,7 @@ The site must be served over HTTPS in production, because login cookies are only
 
 Only let your reverse proxy reach `APP_PORT`, for example with a firewall rule. Never publish the database port.
 
-To update: **Stack > Pull and redeploy** with "Re-pull image and redeploy" and rebuild enabled.
+To update: **Stack > Pull and redeploy**. The `app` image is rebuilt from the new code on every redeploy (`pull_policy: build`). Check the `app` container logs afterwards: if a database migration fails, the container restarts in a loop and the error is printed there.
 
 ## 3. Before going public: legal checklist
 
