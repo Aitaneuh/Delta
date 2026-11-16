@@ -1,5 +1,10 @@
 /** Request validation and result shaping for statistics. No I/O, so it can be unit tested. */
-import { reportGame, sideToMove, type PositionEval } from '../src/services/moveScoring.ts'
+import {
+  reportGame,
+  sideToMove,
+  whiteWinPercent,
+  type PositionEval,
+} from '../src/services/moveScoring.ts'
 import { GAME_TYPES } from './gameQueries.ts'
 
 export const MAX_PLAYER_NAME = 64
@@ -138,6 +143,17 @@ export interface AnalysisStats {
   black_mistakes: number
   white_blunders: number
   black_blunders: number
+  max_swing: number // The largest change in winning chances caused by one move, 0 to 100
+}
+
+/** How much a single move changed White's winning chances, at most, over the whole game. */
+export function maxSwing(evals: PositionEval[]): number {
+  let swing = 0
+  for (let index = 1; index < evals.length; index++) {
+    const change = whiteWinPercent(evals[index]!.cp) - whiteWinPercent(evals[index - 1]!.cp)
+    swing = Math.max(swing, Math.abs(change))
+  }
+  return swing
 }
 
 /** The per-game numbers saved for statistics, from the same scoring the game page shows. */
@@ -161,5 +177,6 @@ export function summarizeAnalysis(
     black_mistakes: report.black.mistakes,
     white_blunders: report.white.blunders,
     black_blunders: report.black.blunders,
+    max_swing: maxSwing(evals),
   }
 }

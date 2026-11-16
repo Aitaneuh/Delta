@@ -116,7 +116,9 @@ function requirePermanentConsent(body: { accept_permanent?: unknown }, reply: Fa
 
 export function registerGames(app: FastifyInstance): void {
   app.get('/api/games', async (request) => {
-    const { where, params, page } = buildGameListQuery(request.query as Record<string, unknown>)
+    const { where, params, page, orderBy } = buildGameListQuery(
+      request.query as Record<string, unknown>,
+    )
 
     const [count, games] = await Promise.all([
       pool.query<{ total: number }>(`SELECT count(*)::int AS total FROM games ${where}`, params),
@@ -124,7 +126,7 @@ export function registerGames(app: FastifyInstance): void {
         `SELECT ${SUMMARY_COLUMNS}
          FROM games LEFT JOIN game_analysis_stats s ON s.game_id = games.id
          ${where}
-         ORDER BY imported_at DESC, id
+         ORDER BY ${orderBy}
          LIMIT ${PAGE_SIZE} OFFSET $${params.length + 1}`,
         [...params, (page - 1) * PAGE_SIZE],
       ),

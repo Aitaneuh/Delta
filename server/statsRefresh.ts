@@ -22,9 +22,13 @@ const ANALYSIS_STATS_COLUMNS: (keyof AnalysisStats)[] = [
   'black_mistakes',
   'white_blunders',
   'black_blunders',
+  'max_swing',
 ]
 
-/** Saves a game's accuracy summary. Keeps the existing one if there is one. */
+/**
+ * Saves a game's accuracy summary. Keeps the existing one if there is one, only filling in a
+ * swing that summaries from before it existed don't have.
+ */
 export async function saveAnalysisStats(
   db: Pool | PoolClient,
   gameId: string,
@@ -36,14 +40,16 @@ export async function saveAnalysisStats(
   await db.query(
     `INSERT INTO game_analysis_stats (game_id, ${ANALYSIS_STATS_COLUMNS.join(', ')})
      VALUES ($1, ${placeholders})
-     ON CONFLICT (game_id) DO NOTHING`,
+     ON CONFLICT (game_id) DO UPDATE SET max_swing = EXCLUDED.max_swing
+     WHERE game_analysis_stats.max_swing IS NULL`,
     [gameId, ...ANALYSIS_STATS_COLUMNS.map((column) => stats[column])],
   )
 }
 
 /**
- * Scores any analysis that has no summary yet. New analyses are scored when they are saved, so
- * this catches up on older ones and any that failed. Paging by ID guarantees this finishes.
+ * Scores any analysis that has no summary yet, or no swing. New analyses are scored when they
+ * are saved, so this catches up on older ones and any that failed. Paging by ID guarantees this
+ * finishes.
  */
 async function summarizeNewAnalyses(client: PoolClient): Promise<void> {
   let lastId = ''
@@ -59,7 +65,7 @@ async function summarizeNewAnalyses(client: PoolClient): Promise<void> {
        FROM game_analyses a
        JOIN games g ON g.id = a.game_id
        LEFT JOIN game_analysis_stats s ON s.game_id = a.game_id
-       WHERE s.game_id IS NULL AND a.game_id > $1
+       WHERE (s.game_id IS NULL OR s.max_swing IS NULL) AND a.game_id > $1
        ORDER BY a.game_id
        LIMIT ${ANALYSIS_BATCH_SIZE}`,
       [lastId],

@@ -47,6 +47,20 @@ describe('game store', () => {
     setActivePinia(createPinia())
   })
 
+  it('sends the sort order and restarts from the first page when it changes', async () => {
+    stubApi(() => ({ games: [], total: 60, page: 1, pageSize: 25 }))
+    const store = useGameStore()
+
+    await store.goToPage(1)
+    expect(calls[0]!.url).toContain('sort=played')
+    await store.goToPage(2)
+    await store.setSort('accuracy_low')
+
+    const query = new URLSearchParams(calls[calls.length - 1]!.url.split('?')[1])
+    expect(query.get('sort')).toBe('accuracy_low')
+    expect(query.get('page')).toBe('1')
+  })
+
   it('sends filters to the server and goes back to the first page', async () => {
     stubApi(() => ({ games: [], total: 60, page: 1, pageSize: 25 }))
     const store = useGameStore()

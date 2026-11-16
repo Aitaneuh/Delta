@@ -5,6 +5,7 @@ import {
   parseStatsFilters,
   playerKey,
   prefixPattern,
+  maxSwing,
   summarizeAnalysis,
   summarizeMatrix,
   type MatrixRow,
@@ -137,5 +138,18 @@ describe('summarizeAnalysis', () => {
     const stats = summarizeAnalysis(['Kd7'], fen, [evalOf(0), evalOf(0)])
     expect(stats.black_accuracy).not.toBeNull()
     expect(stats.white_accuracy).toBeNull()
+  })
+})
+
+describe('maxSwing', () => {
+  const evalOf = (cp: number) => ({ cp, mate: null, best: null, bestSan: null })
+
+  it('finds the move that changed the winning chances most, in either direction', () => {
+    expect(maxSwing([evalOf(0)])).toBe(0)
+    const small = maxSwing([0, 20, -10].map(evalOf))
+    const turn = maxSwing([0, 20, -600, -580].map(evalOf))
+    expect(small).toBeLessThan(5)
+    expect(turn).toBeGreaterThan(30)
+    expect(maxSwing([0, 20, -600, 600].map(evalOf))).toBeGreaterThan(turn)
   })
 })
