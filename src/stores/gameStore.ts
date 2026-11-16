@@ -37,6 +37,7 @@ export interface GameFilters {
   game_types: string[]
   results: string[]
   terminations: string[]
+  sources: string[]
   eco_code: string
   // A cleared number input reports an empty string
   min_elo: number | '' | null
@@ -67,6 +68,7 @@ export function createEmptyFilters(): GameFilters {
     game_types: [],
     results: [],
     terminations: [],
+    sources: [],
     eco_code: '',
     min_elo: null,
     max_elo: null,
@@ -77,8 +79,25 @@ export function createEmptyFilters(): GameFilters {
   }
 }
 
-function filtersToQuery(filters: GameFilters, page: number): string {
-  const query = new URLSearchParams({ page: String(page) })
+/** The Explore page's sort orders. The server knows the same keys (server/gameQueries.ts). */
+export const SORT_OPTIONS = [
+  { value: 'played', label: 'Recently played' },
+  { value: 'played_oldest', label: 'Oldest played' },
+  { value: 'imported', label: 'Recently uploaded' },
+  { value: 'rating', label: 'Highest rated' },
+  { value: 'accuracy_high', label: 'Highest accuracy', analysis: true },
+  { value: 'accuracy_low', label: 'Lowest accuracy', analysis: true },
+  { value: 'blunders', label: 'Most blunders', analysis: true },
+  { value: 'swing', label: 'Biggest swing', analysis: true },
+  { value: 'longest', label: 'Longest games' },
+  { value: 'shortest', label: 'Shortest games' },
+] as const
+
+export type SortOrder = (typeof SORT_OPTIONS)[number]['value']
+export const DEFAULT_SORT: SortOrder = 'played'
+
+function filtersToQuery(filters: GameFilters, page: number, sort: SortOrder): string {
+  const query = new URLSearchParams({ page: String(page), sort })
   for (const [key, value] of Object.entries(filters)) {
     for (const item of Array.isArray(value) ? value : [value]) {
       if (item !== '' && item !== null && item !== false) query.append(key, String(item))
@@ -92,6 +111,7 @@ export const useGameStore = defineStore('game', () => {
   // 1. STATE
   // ==========================================
   const filters = ref<GameFilters>(createEmptyFilters())
+  const sort = ref<SortOrder>(DEFAULT_SORT)
 
   const games = ref<GameSummary[]>([])
   const totalGames = ref(0)
@@ -272,7 +292,7 @@ export const useGameStore = defineStore('game', () => {
 
     try {
       const result = await api<GameListResponse>(
-        `/api/games?${filtersToQuery(filters.value, page.value)}`,
+        `/api/games?${filtersToQuery(filters.value, page.value, sort.value)}`,
       )
       if (request !== latestListRequest) return // A newer search has replaced this one
       games.value = result.games
@@ -289,6 +309,12 @@ export const useGameStore = defineStore('game', () => {
 
   function updateFilters(newFilters: GameFilters): Promise<void> {
     filters.value = { ...newFilters }
+    page.value = 1
+    return fetchGames()
+  }
+
+  function setSort(newSort: SortOrder): Promise<void> {
+    sort.value = newSort
     page.value = 1
     return fetchGames()
   }
@@ -556,6 +582,7 @@ export const useGameStore = defineStore('game', () => {
   return {
     // Shared States
     filters,
+    sort,
     games,
     totalGames,
     page,
@@ -594,6 +621,7 @@ export const useGameStore = defineStore('game', () => {
     fetchGames,
     updateFilters,
     goToPage,
+    setSort,
     importPgn,
     importFromAccount,
     playBoardMove,

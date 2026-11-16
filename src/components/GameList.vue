@@ -2,9 +2,19 @@
 import { computed, onMounted } from 'vue'
 import GameItem from './GameItem.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
-import { useGameStore } from '@/stores/gameStore'
+import { SORT_OPTIONS, useGameStore, type SortOrder } from '@/stores/gameStore'
 
 const store = useGameStore()
+
+const sortNeedsAnalysis = computed(
+  () =>
+    SORT_OPTIONS.find((option) => option.value === store.sort && 'analysis' in option) !==
+    undefined,
+)
+
+function changeSort(event: Event) {
+  void store.setSort((event.target as HTMLSelectElement).value as SortOrder)
+}
 
 // Before the first results arrive there is nothing to dim, so placeholders hold the space
 const firstLoad = computed(() => store.listLoading && store.games.length === 0)
@@ -15,11 +25,33 @@ onMounted(() => store.fetchGames())
 <template>
   <div class="space-y-3">
     <!-- Header/Count -->
-    <div class="flex justify-between items-center mb-4 min-h-5">
-      <LoadingSpinner v-if="firstLoad" label="Loading games…" />
-      <h2 v-else class="text-sm font-medium text-gray-400">Showing {{ store.totalGames }} games</h2>
-      <LoadingSpinner v-if="store.listLoading && !firstLoad" size="sm" label="Updating results" />
+    <div class="flex flex-wrap justify-between items-center gap-3 mb-4 min-h-5">
+      <div class="flex items-center gap-3">
+        <LoadingSpinner v-if="firstLoad" label="Loading games…" />
+        <h2 v-else class="text-sm font-medium text-gray-400">
+          Showing {{ store.totalGames }} games
+        </h2>
+        <LoadingSpinner v-if="store.listLoading && !firstLoad" size="sm" label="Updating results" />
+      </div>
+      <label class="flex items-center gap-2 text-sm text-gray-400">
+        Sort by
+        <select
+          :value="store.sort"
+          class="bg-[#1a1d21] border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 outline-none focus:border-accent"
+          @change="changeSort"
+        >
+          <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </select>
+      </label>
     </div>
+    <p v-if="sortNeedsAnalysis" class="-mt-2 mb-2 text-xs text-gray-500">
+      Analyzed games come first; the others follow in upload order.
+      <template v-if="store.sort === 'swing'">
+        The swing is the biggest change in winning chances caused by a single move.
+      </template>
+    </p>
 
     <p v-if="store.listError" role="alert" class="text-sm text-red-400">{{ store.listError }}</p>
 

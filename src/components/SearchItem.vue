@@ -3,6 +3,13 @@ import { reactive } from 'vue'
 import { createEmptyFilters, useGameStore } from '@/stores/gameStore'
 import LoadingSpinner from './LoadingSpinner.vue'
 
+// "unknown" covers other sites and PGNs that don't say where the game was played
+const SITES = [
+  { value: 'chess.com', label: 'Chess.com' },
+  { value: 'lichess', label: 'Lichess' },
+  { value: 'unknown', label: 'Other' },
+]
+
 const store = useGameStore()
 // Initialize local state with current store values
 const localFilters = reactive({ ...store.filters })
@@ -44,7 +51,7 @@ const handleClear = () => {
     </div>
 
     <!-- Checkbox Sections -->
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
       <!-- Game Types -->
       <div>
         <h3
@@ -131,6 +138,30 @@ const handleClear = () => {
           <label class="flex items-center space-x-2 cursor-pointer hover:text-white pt-2">
             <input type="checkbox" v-model="localFilters.analyzed_only" class="accent-accent" />
             <span class="text-sm">Analyzed only</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Site the game was played on -->
+      <div>
+        <h3
+          class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3 border-b border-gray-800 pb-1"
+        >
+          Site
+        </h3>
+        <div class="space-y-2">
+          <label
+            v-for="site in SITES"
+            :key="site.value"
+            class="flex items-center space-x-2 cursor-pointer hover:text-white"
+          >
+            <input
+              type="checkbox"
+              :value="site.value"
+              v-model="localFilters.sources"
+              class="accent-accent"
+            />
+            <span class="text-sm">{{ site.label }}</span>
           </label>
         </div>
       </div>

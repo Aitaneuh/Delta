@@ -7,6 +7,8 @@ export const PAGE_SIZE = 25
 export const GAME_TYPES = ['bullet', 'blitz', 'rapid', 'classical', 'unknown']
 const RESULTS = ['1-0', '0-1', '1/2-1/2', '*']
 const TERMINATIONS = ['mate', 'resign', 'time', 'draw', 'other']
+// "unknown" is any other site, or a PGN that doesn't say where it was played
+const SOURCES = ['chess.com', 'lichess', 'unknown']
 const MAX_CP = 10000
 const UCI_MOVE = /^[a-h][1-8][a-h][1-8][qrbn]?$/
 
@@ -14,6 +16,37 @@ export interface GameListQuery {
   where: string
   params: unknown[]
   page: number
+  orderBy: string
+}
+
+// Ratings come from uploaded PGN text, so stats_rating() drops implausible ones. A game with
+// one rating sorts by that rating.
+const AVERAGE_RATING = `(COALESCE(stats_rating(white_elo), stats_rating(black_elo))
+  + COALESCE(stats_rating(black_elo), stats_rating(white_elo)))`
+
+/**
+ * The Explore page's sort orders. "s" is game_analysis_stats, so the analysis-based orders put
+ * games without an analysis last. Ties fall back to the newest upload.
+ */
+export const SORT_ORDERS: Record<string, string> = {
+  played: 'played_date DESC NULLS LAST',
+  played_oldest: 'played_date ASC NULLS LAST',
+  imported: 'imported_at DESC',
+  rating: `${AVERAGE_RATING} DESC NULLS LAST`,
+  accuracy_high: '(s.white_accuracy + s.black_accuracy) DESC NULLS LAST',
+  accuracy_low: '(s.white_accuracy + s.black_accuracy) ASC NULLS LAST',
+  blunders: '(s.white_blunders + s.black_blunders) DESC NULLS LAST',
+  swing: 's.max_swing DESC NULLS LAST',
+  longest: 'moves_count DESC',
+  shortest: 'moves_count ASC',
+}
+export const DEFAULT_SORT = 'played'
+
+/** Only own keys count, so "constructor" or "__proto__" can't reach the SQL. */
+function sortOrder(sort: string): string {
+  return Object.prototype.hasOwnProperty.call(SORT_ORDERS, sort)
+    ? SORT_ORDERS[sort]!
+    : SORT_ORDERS[DEFAULT_SORT]!
 }
 
 type Query = Record<string, unknown>
@@ -67,6 +100,9 @@ export function buildGameListQuery(query: Query): GameListQuery {
   const terminations = allowed(query.terminations, TERMINATIONS)
   if (terminations.length) conditions.push(`termination_type = ANY(${add(terminations)})`)
 
+  const sources = allowed(query.sources, SOURCES)
+  if (sources.length) conditions.push(`source = ANY(${add(sources)})`)
+
   const eco = text(query.eco_code).toUpperCase()
   if (eco) conditions.push(`eco_code LIKE ${add(`${escapeLike(eco)}%`)}`)
 
@@ -104,6 +140,7 @@ export function buildGameListQuery(query: Query): GameListQuery {
     where: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '',
     params,
     page: Math.max(1, integer(query.page) ?? 1),
+    orderBy: `${sortOrder(text(query.sort))}, imported_at DESC, id`,
   }
 }
 

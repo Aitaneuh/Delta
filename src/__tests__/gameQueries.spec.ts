@@ -9,7 +9,21 @@ import { parsePGN } from '../services/pgnParser'
 
 describe('buildGameListQuery', () => {
   it('has no conditions by default', () => {
-    expect(buildGameListQuery({})).toEqual({ where: '', params: [], page: 1 })
+    expect(buildGameListQuery({})).toMatchObject({ where: '', params: [], page: 1 })
+  })
+
+  it('sorts by the latest played game by default', () => {
+    expect(buildGameListQuery({}).orderBy).toBe('played_date DESC NULLS LAST, imported_at DESC, id')
+  })
+
+  it('accepts only known sort orders', () => {
+    expect(buildGameListQuery({ sort: 'swing' }).orderBy).toBe(
+      's.max_swing DESC NULLS LAST, imported_at DESC, id',
+    )
+    const fallback = buildGameListQuery({}).orderBy
+    for (const sort of ['constructor', '__proto__', 'id; DROP TABLE games', ['played', 'x']]) {
+      expect(buildGameListQuery({ sort }).orderBy).toBe(fallback)
+    }
   })
 
   it('keeps user text out of the SQL', () => {
@@ -31,6 +45,12 @@ describe('buildGameListQuery', () => {
     expect(params).toEqual([['blitz']])
   })
 
+  it('filters by the site a game was played on', () => {
+    const { where, params } = buildGameListQuery({ sources: ['chess.com', 'unknown', 'evil'] })
+    expect(where).toBe('WHERE source = ANY($1)')
+    expect(params).toEqual([['chess.com', 'unknown']])
+  })
+
   it('can keep only analyzed games', () => {
     expect(buildGameListQuery({ analyzed_only: 'true' }).where).toContain('game_analyses')
     expect(buildGameListQuery({ analyzed_only: 'false' }).where).toBe('')
@@ -39,7 +59,7 @@ describe('buildGameListQuery', () => {
   it('ignores invalid numbers and dates', () => {
     expect(
       buildGameListQuery({ min_elo: 'abc', max_elo: '', played_date: 'yesterday', page: '-4' }),
-    ).toEqual({ where: '', params: [], page: 1 })
+    ).toMatchObject({ where: '', params: [], page: 1 })
   })
 
   it('combines filters with numbered parameters', () => {
