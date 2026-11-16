@@ -4,10 +4,11 @@ Like [ballchasing.com](https://ballchasing.com), but for chess. Upload your game
 
 ## Features
 
-- **Sign in with Lichess**, no password or app registration needed
-- **Import games** from your Lichess account or from PGN text and files, with duplicates detected automatically
+- **No account needed**
+- **Import games** from any Lichess or Chess.com player by username (from the last game up to 500), or from PGN text and files, with duplicates detected automatically
 - **Replay** on an interactive board, using the arrow keys: ← → to step through moves, ↑ ↓ to jump to the first or last move
 - **Computer analysis** with Stockfish running in the browser: eval bar, winning-chances graph, best-move arrow, marked inaccuracies, mistakes and blunders, and accuracy per player
+- **Explore variations** by moving the pieces: side lines appear in the move list and, once a game is analyzed, are evaluated and graded automatically
 - **Explore** every uploaded game, filtered by player, event, game type, result, termination, ECO code, Elo, time control and date
 - **Opening names** for all 500 ECO codes
 - **Permanent, shareable games:** every uploaded game is public and can't be deleted by users

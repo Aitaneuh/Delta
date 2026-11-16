@@ -48,10 +48,7 @@ async function anonymize(username: string): Promise<void> {
       )
     }
 
-    const users = await client.query('DELETE FROM users WHERE lower(username) = lower($1)', [
-      username,
-    ])
-    console.log(`Anonymized ${games.rowCount} game(s), deleted ${users.rowCount} account(s).`)
+    console.log(`Anonymized ${games.rowCount} game(s).`)
   })
 }
 

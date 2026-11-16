@@ -1,14 +1,22 @@
 import { randomBytes } from 'node:crypto'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { parsePGN, type ParsedGame } from '../src/services/pgnParser.ts'
-import { requireUser } from './auth.ts'
+import * as chesscom from './chesscom.ts'
 import { pool } from './db.ts'
 import { PAGE_SIZE, buildGameListQuery, contentHash, parseAnalysis } from './gameQueries.ts'
-import { LichessBusyError, fetchRecentGames } from './lichess.ts'
+import * as lichess from './lichess.ts'
+import { PlayerNotFoundError, SourceBusyError } from './remoteSource.ts'
 import { saveAnalysisStats } from './statsRefresh.ts'
 
 const MAX_GAMES_PER_UPLOAD = 200
-const LICHESS_IMPORT_SIZES = [10, 25, 50, 100]
+// The largest size is the "as many as possible" choice on the import page
+const ACCOUNT_IMPORT_SIZES = [1, 3, 5, 10, 25, 50, 75, 100, 500]
+const USERNAME_PATTERN = /^[A-Za-z0-9_-]{1,30}$/
+
+const PLATFORMS = new Map([
+  ['lichess', { name: 'Lichess', fetchRecentGames: lichess.fetchRecentGames }],
+  ['chesscom', { name: 'Chess.com', fetchRecentGames: chesscom.fetchRecentGames }],
+])
 
 // The accuracy columns come from game_analysis_stats, joined as "s"
 const SUMMARY_COLUMNS = `id, imported_at AS imported_date, source, event, played_date,
@@ -59,7 +67,7 @@ interface SaveResult {
 }
 
 /** Saves games in one transaction. A game that already exists links to its first upload. */
-async function saveGames(games: ParsedGame[], userId: string): Promise<SaveResult> {
+async function saveGames(games: ParsedGame[]): Promise<SaveResult> {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
@@ -68,14 +76,14 @@ async function saveGames(games: ParsedGame[], userId: string): Promise<SaveResul
     for (const game of games) {
       const hash = contentHash(game)
       const values = INSERT_COLUMNS.map((column) => game[column])
-      const placeholders = INSERT_COLUMNS.map((_, index) => `$${index + 5}`).join(', ')
+      const placeholders = INSERT_COLUMNS.map((_, index) => `$${index + 4}`).join(', ')
 
       const inserted = await client.query<{ id: string }>(
-        `INSERT INTO games (id, content_hash, uploaded_by, moves, ${INSERT_COLUMNS.join(', ')})
-         VALUES ($1, $2, $3, $4, ${placeholders})
+        `INSERT INTO games (id, content_hash, moves, ${INSERT_COLUMNS.join(', ')})
+         VALUES ($1, $2, $3, ${placeholders})
          ON CONFLICT (content_hash) DO NOTHING
          RETURNING id`,
-        [randomBytes(8).toString('base64url'), hash, userId, JSON.stringify(game.moves), ...values],
+        [randomBytes(8).toString('base64url'), hash, JSON.stringify(game.moves), ...values],
       )
 
       if (inserted.rows[0]) {
@@ -148,7 +156,6 @@ export function registerGames(app: FastifyInstance): void {
   app.post(
     '/api/games',
     {
-      preHandler: requireUser,
       bodyLimit: 5 * 1024 * 1024,
       config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
     },
@@ -169,41 +176,60 @@ export function registerGames(app: FastifyInstance): void {
           .send({ error: `Please upload at most ${MAX_GAMES_PER_UPLOAD} games at once.` })
       }
 
-      return saveGames(games, request.user!.id)
+      return saveGames(games)
     },
   )
 
   app.post(
-    '/api/lichess/import',
-    { preHandler: requireUser, config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    '/api/import/account',
+    { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
     async (request, reply) => {
-      const body = (request.body ?? {}) as { max?: unknown; accept_permanent?: unknown }
+      const body = (request.body ?? {}) as {
+        platform?: unknown
+        username?: unknown
+        max?: unknown
+        accept_permanent?: unknown
+      }
       if (!requirePermanentConsent(body, reply)) return reply
-      if (!LICHESS_IMPORT_SIZES.includes(body.max as number)) {
+
+      const platform = typeof body.platform === 'string' ? PLATFORMS.get(body.platform) : undefined
+      if (!platform) return reply.code(400).send({ error: 'Choose Lichess or Chess.com.' })
+
+      const username = typeof body.username === 'string' ? body.username.trim() : ''
+      if (!USERNAME_PATTERN.test(username)) {
+        return reply.code(400).send({ error: 'Please enter a valid username.' })
+      }
+      if (!ACCOUNT_IMPORT_SIZES.includes(body.max as number)) {
         return reply.code(400).send({ error: 'Choose how many games to import.' })
       }
 
       let pgn: string
       try {
-        pgn = await fetchRecentGames(request.user!.username, body.max as number)
+        pgn = await platform.fetchRecentGames(username, body.max as number)
       } catch (err) {
-        if (err instanceof LichessBusyError) {
-          return reply.code(503).send({ error: 'Lichess is busy. Please try again in a minute.' })
+        if (err instanceof PlayerNotFoundError) {
+          return reply
+            .code(404)
+            .send({ error: `${platform.name} has no player named ${username}.` })
         }
-        request.log.warn({ err }, 'Lichess import failed')
-        return reply.code(502).send({ error: 'Could not download your games from Lichess.' })
+        if (err instanceof SourceBusyError) {
+          return reply
+            .code(503)
+            .send({ error: `${platform.name} is busy. Please try again in a minute.` })
+        }
+        request.log.warn({ err }, `${platform.name} import failed`)
+        return reply.code(502).send({ error: `Could not download games from ${platform.name}.` })
       }
 
       if (!pgn.trim()) return { games: [], created: 0, duplicates: 0 }
       const games = parsePGN(pgn, { skipInvalid: true }).filter((game) => game.moves_count > 0)
-      return saveGames(games, request.user!.id)
+      return saveGames(games)
     },
   )
 
   app.put(
     '/api/games/:id/analysis',
     {
-      preHandler: requireUser,
       bodyLimit: 2 * 1024 * 1024,
       config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     },
@@ -220,10 +246,10 @@ export function registerGames(app: FastifyInstance): void {
 
       // Analyses are permanent too, so the first complete one is kept
       await pool.query(
-        `INSERT INTO game_analyses (game_id, engine, depth, evals, analyzed_by)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO game_analyses (game_id, engine, depth, evals)
+         VALUES ($1, $2, $3, $4)
          ON CONFLICT (game_id) DO NOTHING`,
-        [id, analysis.engine, analysis.depth, JSON.stringify(analysis.evals), request.user!.id],
+        [id, analysis.engine, analysis.depth, JSON.stringify(analysis.evals)],
       )
 
       const { rows } = await pool.query(

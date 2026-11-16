@@ -53,7 +53,7 @@ export function isAnalyzable(pgn: string): boolean {
   return !variant || variant === 'standard' || variant === 'from position'
 }
 
-function uciToSan(fen: string, uci: string | null): string | null {
+export function uciToSan(fen: string, uci: string | null): string | null {
   const move = uci ? parseUci(uci) : undefined
   const setup = parseFen(fen)
   if (!move || setup.isErr) return null

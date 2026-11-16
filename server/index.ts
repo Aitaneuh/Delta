@@ -1,11 +1,9 @@
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import cookie from '@fastify/cookie'
 import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
 import fastifyStatic from '@fastify/static'
 import Fastify from 'fastify'
-import { registerAuth } from './auth.ts'
 import { config } from './config.ts'
 import { migrate, pool } from './db.ts'
 import { registerGames } from './games.ts'
@@ -40,7 +38,6 @@ await app.register(helmet, {
   },
   strictTransportSecurity: config.isHttps,
 })
-await app.register(cookie)
 await app.register(rateLimit, {
   global: true,
   max: 300,
@@ -48,7 +45,6 @@ await app.register(rateLimit, {
   allowList: (request) => !request.url.startsWith('/api/'),
 })
 
-registerAuth(app)
 registerGames(app)
 registerStats(app)
 

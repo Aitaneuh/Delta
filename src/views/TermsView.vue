@@ -12,7 +12,7 @@ const site = useSiteInfo()
       <p>
         Delta Analyzer lets you upload, browse and analyze chess games. By using the site, you
         accept these terms. You must be at least 16, or have a parent's or guardian's permission, to
-        sign in and upload games.
+        upload games.
       </p>
 
       <h2>Uploaded games are public and permanent</h2>

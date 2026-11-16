@@ -4,14 +4,12 @@ import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
 import GlobalStats from '@/components/stats/GlobalStats.vue'
 import PlayerStats from '@/components/stats/PlayerStats.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
-import { useAuthStore } from '@/stores/authStore'
 import { useStatsStore } from '@/stores/statsStore'
 import { GAME_TYPES, bandLabel, gameTypeLabel, queryText } from '@/services/stats'
 
 const route = useRoute()
 const router = useRouter()
 const store = useStatsStore()
-const auth = useAuthStore()
 
 // The URL holds the filters, so any view of the statistics can be shared as a link
 const player = computed(() => queryText(route.query.player).trim())
@@ -125,14 +123,6 @@ const hasData = computed(() => (showingPlayer.value ? !!store.player : !!store.g
           class="cursor-pointer bg-accent hover:bg-accent-dark text-white font-bold py-2 px-4 rounded transition text-sm"
         >
           View
-        </button>
-        <button
-          v-if="auth.user && auth.user.username.toLowerCase() !== player.toLowerCase()"
-          type="button"
-          class="cursor-pointer rounded bg-gray-800 hover:bg-gray-700 px-3 py-2 text-sm text-gray-200 transition whitespace-nowrap"
-          @click="showPlayer(auth.user.username)"
-        >
-          My stats
         </button>
       </form>
     </header>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { EngineEval } from '../services/engine'
 import { useRoute, useRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
 import GameHeader from '../components/game-detail/GameHeader.vue'
@@ -43,6 +44,20 @@ const savedReport = computed(() =>
   gameStore.currentGame?.analysis ? gameStore.analysisReport : null,
 )
 
+// While the engine works on a new variation position, the bar keeps its last value instead of
+// disappearing and coming back
+const lastShownEval = ref<EngineEval | null>(null)
+watch(
+  () => gameStore.currentEval,
+  (evaluation) => {
+    if (evaluation) lastShownEval.value = evaluation
+  },
+  { immediate: true },
+)
+const barEval = computed(
+  () => gameStore.currentEval ?? (gameStore.isEvaluatingVariation ? lastShownEval.value : null),
+)
+
 const handleGoToMove = (index: number) => {
   gameStore.goToMove(index)
 }
@@ -72,6 +87,7 @@ onMounted(() => window.addEventListener('keydown', handleKeydown))
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
   gameStore.cancelAnalysis()
+  gameStore.stopExploration()
 })
 </script>
 
@@ -119,18 +135,19 @@ onBeforeUnmount(() => {
               <div class="min-w-0 w-full mx-auto max-w-[max(20rem,calc(100dvh-16rem))]">
                 <div class="flex items-stretch gap-1.5 sm:gap-2">
                   <EvalBar
-                    v-if="gameStore.currentEval"
-                    :white-percent="whiteWinPercent(gameStore.currentEval.cp)"
-                    :label="formatEval(gameStore.currentEval)"
+                    v-if="barEval"
+                    :white-percent="whiteWinPercent(barEval.cp)"
+                    :label="formatEval(barEval)"
                   />
                   <div class="flex-1 min-w-0">
                     <ChessBoard
                       :fen="gameStore.currentFen || gameStore.currentGame.initial_fen"
                       orientation="white"
-                      :interactive="false"
                       :last-move="gameStore.currentPosition?.lastMove"
                       :check="gameStore.currentPosition?.check"
                       :arrow="gameStore.currentEval?.best"
+                      :dests="gameStore.currentDests"
+                      @move="gameStore.playBoardMove"
                     />
                   </div>
                 </div>
@@ -155,7 +172,12 @@ onBeforeUnmount(() => {
                   :moves="gameStore.currentGame.moves"
                   :current-move-index="gameStore.currentMoveIndex"
                   :reports="gameStore.analysisReport?.moves"
+                  :variations="gameStore.variations"
+                  :active-variation="gameStore.activeVariation"
+                  :variation-grades="gameStore.variationGrades"
                   @go-to-move="handleGoToMove"
+                  @go-to-variation-move="gameStore.goToVariationMove"
+                  @remove-variation="gameStore.removeVariation"
                 />
               </div>
 

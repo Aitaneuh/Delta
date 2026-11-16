@@ -6,9 +6,9 @@ The stack has two containers: `app` (website and API) and `db` (PostgreSQL). The
 
 - A domain or subdomain pointing at your home connection (use dynamic DNS if your IP changes).
 - Port 443 forwarded to a reverse proxy that provides HTTPS and forwards to the `app` port. If you already run Nginx Proxy Manager, Traefik or Caddy, use it.
-- **Nothing to set up on Lichess.** Sign-in uses OAuth with PKCE, which needs no app registration or client secret.
+- **Nothing to set up on Lichess or Chess.com.** There is no sign-in: games are downloaded from their public APIs by username.
 
-The site must be served over HTTPS in production, because login cookies are only sent over a secure connection.
+Serve the site over HTTPS in production. When `PUBLIC_URL` starts with `https://`, the app tells browsers to always use HTTPS.
 
 ## 2. Deploy in Portainer
 
@@ -53,8 +53,8 @@ This is a practical checklist, not legal advice. The Privacy Policy and Terms ar
 Users can never delete a game, and the database itself refuses deletes and edits from the application. Privacy law still gives players a right to erasure, and illegal content must be removable, so you have two commands. Run them from the `app` container console in Portainer:
 
 ```sh
-# Valid privacy request: replaces the name, removes identifying links, deletes the account
-node server/admin.ts anonymize LichessUsername
+# Valid privacy request: replaces the name and removes identifying links
+node server/admin.ts anonymize PlayerUsername
 
 # Illegal content: removes one game (the ID is in the game's URL)
 node server/admin.ts remove GAME_ID

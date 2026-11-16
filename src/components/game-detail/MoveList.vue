@@ -1,18 +1,47 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { GRADE_SYMBOLS, type MoveReport } from '@/services/gameAnalysis'
+import { GRADE_SYMBOLS, type MoveGrade, type MoveReport } from '@/services/gameAnalysis'
+import type { Variation } from '@/services/variations'
 
 interface Props {
   moves: string[]
   currentMoveIndex: number
   reports?: MoveReport[]
+  variations?: Variation[]
+  activeVariation?: { id: number; ply: number } | null
+  variationGrades?: Map<number, (MoveGrade | null)[]>
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  reports: undefined,
+  variations: () => [],
+  activeVariation: null,
+  variationGrades: () => new Map(),
+})
 
 const emit = defineEmits<{
   goToMove: [index: number]
+  goToVariationMove: [id: number, ply: number]
+  removeVariation: [id: number]
 }>()
+
+/** Variations listed under a row of the move list: the row holding the move they replace. */
+function variationsForRow(row: number): Variation[] {
+  const lastRow = movePairs.value.length - 1
+  return props.variations.filter(
+    (variation) => Math.min(Math.floor(variation.startIndex / 2), lastRow) === row,
+  )
+}
+
+function isActiveVariationMove(id: number, ply: number): boolean {
+  return props.activeVariation?.id === id && props.activeVariation.ply === ply
+}
+
+function gradeColor(grade: MoveGrade | null | undefined): string {
+  if (grade === 'blunder') return 'text-[#f0524f]'
+  if (grade === 'mistake') return 'text-[#ec835a]'
+  return 'text-[#fab219]'
+}
 
 // Group moves into pairs (white, black)
 const movePairs = computed(() => {
@@ -43,21 +72,18 @@ function gradeSymbol(index: number): string {
 
 function gradeClass(index: number): string {
   if (isActiveMoveIndex(index)) return 'text-white'
-  const grade = props.reports?.[index - 1]?.grade
-  if (grade === 'blunder') return 'text-[#f0524f]'
-  if (grade === 'mistake') return 'text-[#ec835a]'
-  return 'text-[#fab219]'
+  return gradeColor(props.reports?.[index - 1]?.grade)
 }
 
 function isActiveMoveIndex(index: number): boolean {
-  return props.currentMoveIndex === index
+  return !props.activeVariation && props.currentMoveIndex === index
 }
 
 // Keep the current move visible. Only the list scrolls, never the page.
 const scroller = ref<HTMLElement | null>(null)
 
 watch(
-  () => props.currentMoveIndex,
+  () => [props.currentMoveIndex, props.activeVariation?.id, props.activeVariation?.ply],
   async () => {
     await nextTick()
     const list = scroller.value
@@ -87,7 +113,8 @@ watch(
       </button>
 
       <!-- Move pairs -->
-      <div v-for="pair in movePairs" :key="pair.moveNumber" class="flex items-start space-x-2 text-sm">
+      <template v-for="(pair, row) in movePairs" :key="pair.moveNumber">
+      <div class="flex items-start space-x-2 text-sm">
         <span class="text-gray-600 font-mono min-w-[2rem] text-right">
           {{ pair.moveNumber }}.
         </span>
@@ -108,6 +135,33 @@ watch(
           </button>
         </div>
       </div>
+
+      <!-- Variations played on the board, under the move they replace -->
+      <div v-for="variation in variationsForRow(row)" :key="`variation-${variation.id}`"
+        class="ml-10 flex items-start gap-1 rounded border-l-2 border-gray-600 bg-[#14171a] py-1 pl-2 pr-1">
+        <div class="flex-1 min-w-0 flex flex-wrap items-center gap-x-0.5 gap-y-0.5 font-mono text-xs">
+          <template v-for="(move, index) in variation.moves" :key="index">
+            <span v-if="move.color === 'white' || index === 0" class="text-gray-600 pl-1">
+              {{ move.moveNumber }}{{ move.color === 'white' ? '.' : '...' }}
+            </span>
+            <button type="button" class="px-1 py-0.5 rounded transition cursor-pointer"
+              :class="isActiveVariationMove(variation.id, index + 1)
+                ? 'bg-accent text-white font-semibold'
+                : 'text-gray-400 hover:bg-gray-800'"
+              :data-active="isActiveVariationMove(variation.id, index + 1)"
+              @click="emit('goToVariationMove', variation.id, index + 1)">
+              {{ move.san }}<span v-if="variationGrades.get(variation.id)?.[index]" class="font-bold"
+                :class="isActiveVariationMove(variation.id, index + 1) ? 'text-white' : gradeColor(variationGrades.get(variation.id)?.[index])">{{ GRADE_SYMBOLS[variationGrades.get(variation.id)![index]!] }}</span>
+            </button>
+          </template>
+        </div>
+        <button type="button" title="Remove this variation" aria-label="Remove this variation"
+          class="shrink-0 px-1.5 text-gray-500 hover:text-gray-200 cursor-pointer leading-5"
+          @click="emit('removeVariation', variation.id)">
+          &times;
+        </button>
+      </div>
+      </template>
 
       <div v-if="moves.length === 0" class="text-center text-gray-600 py-8 text-sm">
         No moves recorded
