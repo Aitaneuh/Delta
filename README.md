@@ -1,4 +1,4 @@
-# Delta Analyzer
+# Delta
 
 Like [ballchasing.com](https://ballchasing.com), but for chess. Upload your games, replay them move by move and analyze them with Stockfish.
 
