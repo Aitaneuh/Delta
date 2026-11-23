@@ -7,8 +7,8 @@ import type { Color, Key } from 'chessground/types'
 
 // Official Lichess Layout & Theme Asset Streams
 import 'chessground/assets/chessground.base.css'
-import 'chessground/assets/chessground.brown.css'     // Classic brown/wood style theme
-import 'chessground/assets/chessground.cburnett.css'  // Standard crisp piece set
+import '@/assets/board.css' // Delta's own square and highlight colors
+import 'chessground/assets/chessground.cburnett.css' // Standard crisp piece set
 
 interface Props {
   fen?: string
@@ -53,9 +53,7 @@ function positionConfig(): Config {
 function showArrow() {
   const move = props.arrow
   boardApi?.setAutoShapes(
-    move
-      ? [{ orig: move.slice(0, 2) as Key, dest: move.slice(2, 4) as Key, brush: 'blue' }]
-      : [],
+    move ? [{ orig: move.slice(0, 2) as Key, dest: move.slice(2, 4) as Key, brush: 'engine' }] : [],
   )
 }
 
@@ -88,6 +86,15 @@ onMounted(() => {
         enabled: true,
         visible: true,
         eraseOnClick: true, // Left click clears everything, exactly like Lichess
+        brushes: {
+          // Chessground's own colors, for arrows drawn with the right mouse button
+          green: { key: 'g', color: '#15781B', opacity: 1, lineWidth: 10 },
+          red: { key: 'r', color: '#882020', opacity: 1, lineWidth: 10 },
+          blue: { key: 'b', color: '#003088', opacity: 1, lineWidth: 10 },
+          yellow: { key: 'y', color: '#e68f00', opacity: 1, lineWidth: 10 },
+          // The engine's suggested move, in the site's red
+          engine: { key: 'de', color: '#dc2f2f', opacity: 0.85, lineWidth: 10 },
+        },
       },
       highlight: {
         lastMove: true,
@@ -111,17 +118,24 @@ onBeforeUnmount(() => {
   boardApi = null
 })
 
-watch(() => props.orientation, (newOrientation) => {
-  if (boardApi) {
-    boardApi.set({ orientation: newOrientation })
-  }
-})
+watch(
+  () => props.orientation,
+  (newOrientation) => {
+    if (boardApi) {
+      boardApi.set({ orientation: newOrientation })
+    }
+  },
+)
 </script>
 
 <template>
-  <div class="bg-[#1a1d21] rounded-lg overflow-hidden border border-gray-800 p-2">
-    <div ref="boardContainer" class="chessboard-container blue" @contextmenu.prevent
-      style="width: 100%; aspect-ratio: 1/1;"></div>
+  <div class="bg-surface overflow-hidden border border-gray-800 p-1.5">
+    <div
+      ref="boardContainer"
+      class="chessboard-container blue"
+      @contextmenu.prevent
+      style="width: 100%; aspect-ratio: 1/1"
+    ></div>
   </div>
 </template>
 
@@ -130,9 +144,5 @@ watch(() => props.orientation, (newOrientation) => {
 .chessboard-container :deep(.cg-wrap) {
   width: 100%;
   height: 100%;
-}
-
-.chessboard-container :deep(cg-board) {
-  background-color: #ff6666;
 }
 </style>

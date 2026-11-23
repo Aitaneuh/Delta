@@ -112,7 +112,7 @@ const hasData = computed(() => (showingPlayer.value ? !!store.player : !!store.g
           placeholder="Player name"
           autocomplete="off"
           maxlength="64"
-          class="min-w-0 flex-1 sm:w-56 bg-[#1a1d21] border border-gray-700 rounded p-2 text-sm focus:border-accent outline-none transition"
+          class="min-w-0 flex-1 sm:w-56 bg-surface border border-gray-700 rounded p-2 text-sm focus:border-accent outline-none transition"
           @input="onSearchInput"
         />
         <datalist id="stats-player-suggestions">
@@ -192,14 +192,14 @@ const hasData = computed(() => (showingPlayer.value ? !!store.player : !!store.g
         <div
           v-for="index in 8"
           :key="index"
-          class="h-[74px] rounded-lg border border-gray-800 bg-[#1a1d21] motion-safe:animate-pulse"
+          class="h-[74px] rounded-lg border border-gray-800 bg-surface motion-safe:animate-pulse"
         ></div>
       </div>
       <div class="grid lg:grid-cols-2 gap-6" aria-hidden="true">
         <div
           v-for="index in 2"
           :key="index"
-          class="h-64 rounded-lg border border-gray-800 bg-[#1a1d21] motion-safe:animate-pulse"
+          class="h-64 rounded-lg border border-gray-800 bg-surface motion-safe:animate-pulse"
         ></div>
       </div>
     </div>

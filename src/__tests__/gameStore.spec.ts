@@ -276,6 +276,10 @@ describe('variations', () => {
     expect(store.currentEval).toMatchObject({ cp: 500 })
     expect(store.variationGrades.get(store.variations[0]!.id)).toEqual(['blunder'])
     expect(store.currentMoveGrade).toMatchObject({ grade: 'blunder', move: 'f6' })
+    expect(store.currentCoachComment).toMatchObject({
+      tone: 'blunder',
+      headline: 'f6 is a blunder.',
+    })
   })
 
   it('does not evaluate variations when the analysis is off', async () => {

@@ -37,7 +37,7 @@ onMounted(() => store.fetchGames())
         Sort by
         <select
           :value="store.sort"
-          class="bg-[#1a1d21] border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 outline-none focus:border-accent"
+          class="bg-surface border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 outline-none focus:border-accent"
           @change="changeSort"
         >
           <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">
@@ -60,7 +60,7 @@ onMounted(() => store.fetchGames())
       <div
         v-for="index in 5"
         :key="index"
-        class="h-[74px] rounded-lg border border-gray-800 bg-[#1a1d21] motion-safe:animate-pulse"
+        class="h-[74px] rounded-lg border border-gray-800 bg-surface motion-safe:animate-pulse"
       ></div>
     </div>
 

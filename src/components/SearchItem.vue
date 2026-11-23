@@ -34,7 +34,7 @@ const handleClear = () => {
           v-model="localFilters.game_name"
           type="text"
           placeholder="e.g. Titled Tuesday"
-          class="w-full bg-[#1a1d21] border border-gray-700 rounded p-2 focus:border-accent outline-none transition"
+          class="w-full bg-surface border border-gray-700 rounded p-2 focus:border-accent outline-none transition"
         />
         <p class="text-xs text-gray-500 mt-1 italic">Replay title or event</p>
       </div>
@@ -44,7 +44,7 @@ const handleClear = () => {
           v-model="localFilters.player_name"
           type="text"
           placeholder="Search White or Black"
-          class="w-full bg-[#1a1d21] border border-gray-700 rounded p-2 focus:border-accent outline-none transition"
+          class="w-full bg-surface border border-gray-700 rounded p-2 focus:border-accent outline-none transition"
         />
         <p class="text-xs text-gray-500 mt-1 italic">Matches part of a name, any case</p>
       </div>
@@ -173,26 +173,26 @@ const handleClear = () => {
         v-model.trim="localFilters.eco_code"
         type="text"
         placeholder="ECO code (e.g. B20)"
-        class="col-span-2 md:col-span-1 min-w-0 bg-[#1a1d21] border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
+        class="col-span-2 md:col-span-1 min-w-0 bg-surface border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
       />
 
       <input
         v-model.number="localFilters.min_elo"
         type="number"
         placeholder="Min Elo"
-        class="min-w-0 bg-[#1a1d21] border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
+        class="min-w-0 bg-surface border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
       />
 
       <input
         v-model.number="localFilters.max_elo"
         type="number"
         placeholder="Max Elo"
-        class="min-w-0 bg-[#1a1d21] border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
+        class="min-w-0 bg-surface border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
       />
 
       <select
         v-model="localFilters.time_control_kind"
-        class="col-span-2 md:col-span-1 min-w-0 bg-[#1a1d21] border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
+        class="col-span-2 md:col-span-1 min-w-0 bg-surface border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
       >
         <option value="">All Time Controls</option>
         <option value="standard">Standard only</option>
@@ -206,7 +206,7 @@ const handleClear = () => {
         <input
           type="date"
           v-model="localFilters.played_date"
-          class="w-full bg-[#1a1d21] border border-gray-700 rounded p-2 text-sm outline-none color-scheme-dark"
+          class="w-full bg-surface border border-gray-700 rounded p-2 text-sm outline-none color-scheme-dark"
         />
         <div class="flex justify-between mt-1">
           <span class="text-xs text-gray-500">Played date</span>
@@ -223,7 +223,7 @@ const handleClear = () => {
         <input
           type="date"
           v-model="localFilters.imported_date"
-          class="w-full bg-[#1a1d21] border border-gray-700 rounded p-2 text-sm outline-none color-scheme-dark"
+          class="w-full bg-surface border border-gray-700 rounded p-2 text-sm outline-none color-scheme-dark"
         />
         <div class="flex justify-between mt-1">
           <span class="text-xs text-gray-500">Upload date</span>

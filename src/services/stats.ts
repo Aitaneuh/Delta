@@ -98,14 +98,14 @@ const SOURCE_LABELS: Record<string, string> = {
 
 /** Series colors, validated for the dark surface. Each time mode keeps its color everywhere. */
 export const GAME_TYPE_COLORS: Record<string, string> = {
-  bullet: '#3987e5',
-  blitz: '#d95926',
-  rapid: '#199e70',
-  classical: '#c98500',
+  bullet: '#dc2f2f',
+  blitz: '#ededed',
+  rapid: '#8a8a8a',
+  classical: '#f09a9a',
 }
 
 /** The two sides of a result and the neutral draw between them. */
-export const OUTCOME_COLORS = { wins: '#3987e5', draws: '#71717a', losses: '#d95926' }
+export const OUTCOME_COLORS = { wins: '#ededed', draws: '#5c5c5c', losses: '#dc2f2f' }
 
 const SHORT_MONTHS = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')
 

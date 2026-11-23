@@ -1,81 +1,56 @@
-<template>
-  <nav class="navbar p-5 flex flex-wrap items-center gap-x-6 gap-y-3 top-0 z-0 bg-zinc-950">
-    <div class="logo">
-      <router-link to="/" class="logo-link">
-        <img :src="logoUrl" alt="Delta Analyzer logo" width="30" height="30" />
-        <span>Delta <span class="text-accent">Analyzer</span></span>
-      </router-link>
-    </div>
-    <ul>
-      <li><router-link to="/">Explore</router-link></li>
-      <li><router-link to="/import">Import</router-link></li>
-      <li><router-link to="/stats">Statistics</router-link></li>
-    </ul>
-    <!-- Same width as the logo column, so the links stay centered -->
-    <div class="spacer" aria-hidden="true"></div>
-  </nav>
-</template>
-
 <script setup lang="ts">
+// Bound rather than written in the template, so the build doesn't try to import it as a module
 const logoUrl = '/images/delta_analyzer_logo_white_red.png'
+
+const links = [
+  { to: '/explore', label: 'Explore' },
+  { to: '/import', label: 'Import' },
+  { to: '/stats', label: 'Statistics' },
+]
 </script>
 
+<template>
+  <header class="sticky top-0 z-30 border-b border-gray-800 bg-ink/95 backdrop-blur-sm">
+    <nav
+      class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-8 gap-y-2 px-4 py-3 sm:px-6"
+      aria-label="Main"
+    >
+      <router-link to="/" class="group flex items-center gap-2.5" aria-label="Delta Analyzer, home">
+        <img
+          :src="logoUrl"
+          alt=""
+          width="26"
+          height="26"
+          class="transition-transform duration-300 group-hover:rotate-[-8deg]"
+        />
+        <span class="font-serif text-xl leading-none text-gray-100">
+          Delta
+          <span class="font-mono text-[11px] uppercase tracking-[0.2em] text-gray-500"
+            >Analyzer</span
+          >
+        </span>
+      </router-link>
+
+      <ul class="flex items-center gap-6 sm:gap-8">
+        <li v-for="link in links" :key="link.to">
+          <router-link
+            :to="link.to"
+            class="nav-link py-1 text-[11px] uppercase tracking-[0.2em] text-gray-400 transition-colors hover:text-gray-100"
+            >{{ link.label }}</router-link
+          >
+        </li>
+      </ul>
+    </nav>
+  </header>
+</template>
+
 <style scoped>
-ul {
-  display: flex;
-  list-style: none;
-  gap: clamp(1.5rem, 10vw, 150px);
-  margin: 0;
-  align-items: center;
+.nav-link {
+  border-bottom: 1px solid transparent;
 }
 
-ul a {
-  color: var(--text-color);
-  text-decoration: none;
-}
-
-span {
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.logo {
-  flex: 1 1 auto;
-}
-
-.logo-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
-  color: inherit;
-  cursor: pointer;
-  transition: 300ms;
-}
-
-.logo-link:hover {
-  opacity: 0.8;
-}
-
-.logo .router-link-active {
-  border-bottom: none;
-}
-
-.router-link-active {
-  border-bottom: 2px solid var(--accent-color);
-}
-
-.spacer {
-  display: none;
-}
-
-/* From tablet up, equal-width side columns keep the links centered in the bar. */
-@media (min-width: 900px) {
-  .logo,
-  .spacer {
-    display: block;
-    flex: 1 1 0;
-  }
+.nav-link.router-link-active {
+  color: var(--color-gray-100);
+  border-bottom-color: var(--color-accent);
 }
 </style>

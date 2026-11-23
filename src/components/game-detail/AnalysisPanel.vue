@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
 import { GRADE_SYMBOLS, formatEval } from '@/services/gameAnalysis'
+import type { CoachTone } from '@/services/coach'
+import type { EloEstimate } from '@/services/eloEstimate'
 import EvalGraph from './EvalGraph.vue'
 
 const store = useGameStore()
@@ -10,18 +12,48 @@ const game = computed(() => store.currentGame)
 const totalPositions = computed(() => (game.value?.moves_count ?? 0) + 1)
 const progress = computed(() => (store.currentEvals.length / totalPositions.value) * 100)
 
-const currentGrade = computed(() => {
-  const current = store.currentMoveGrade
-  if (!current) return null
-  return { symbol: GRADE_SYMBOLS[current.grade], name: current.grade, ...current }
+const TONE_STYLES: Record<CoachTone, { label: string; color: string; border: string }> = {
+  best: { label: 'Best move', color: 'text-gray-100', border: 'border-gray-100' },
+  good: { label: 'Good move', color: 'text-gray-300', border: 'border-gray-600' },
+  inaccuracy: {
+    label: `Inaccuracy ${GRADE_SYMBOLS.inaccuracy}`,
+    color: 'text-inaccuracy',
+    border: 'border-inaccuracy',
+  },
+  mistake: {
+    label: `Mistake ${GRADE_SYMBOLS.mistake}`,
+    color: 'text-mistake',
+    border: 'border-mistake',
+  },
+  blunder: {
+    label: `Blunder ${GRADE_SYMBOLS.blunder}`,
+    color: 'text-blunder',
+    border: 'border-blunder',
+  },
+}
+
+const coach = computed(() => {
+  const comment = store.currentCoachComment
+  return comment ? { ...comment, style: TONE_STYLES[comment.tone] } : null
 })
+
+const ESTIMATE_HINT =
+  'A rough guess at the rating each side played at in this game. When the game records a ' +
+  "player's rating, it starts from that rating and moves it up or down by how accurately they " +
+  'played; otherwise it comes from average centipawn loss alone. ~ means the game was short, ' +
+  'so the guess is rougher.'
+
+function formatEstimate(estimate: EloEstimate | null | undefined): string {
+  if (!estimate) return '—'
+  return estimate.confidence === 'low' ? `~${estimate.elo}` : String(estimate.elo)
+}
 
 const statRows = computed(() => {
   const report = store.analysisReport
   if (!report) return []
   const { white, black } = report
 
-  return [
+  const rows: { label: string; white: string | number; black: string | number; hint?: string }[] = [
     {
       label: 'Accuracy',
       white: `${white.accuracy.toFixed(1)}%`,
@@ -36,11 +68,22 @@ const statRows = computed(() => {
     { label: 'Mistakes (?)', white: white.mistakes, black: black.mistakes },
     { label: 'Blunders (??)', white: white.blunders, black: black.blunders },
   ]
+
+  const estimates = store.eloEstimates
+  if (estimates) {
+    rows.push({
+      label: 'Estimated Elo',
+      white: formatEstimate(estimates.white),
+      black: formatEstimate(estimates.black),
+      hint: ESTIMATE_HINT,
+    })
+  }
+  return rows
 })
 </script>
 
 <template>
-  <section v-if="game" class="bg-[#1a1d21] rounded-lg border border-gray-800 p-4 sm:p-6">
+  <section v-if="game" class="bg-surface rounded-lg border border-gray-800 p-4 sm:p-6">
     <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 mb-4">
       <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wide">Computer Analysis</h3>
       <div v-if="game.analysis" class="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -149,13 +192,22 @@ const statRows = computed(() => {
             Engine's move here: <span class="text-gray-200">{{ store.currentEval.bestSan }}</span>
           </span>
         </p>
-        <p v-if="currentGrade" class="mt-1 text-gray-400">
-          <span class="text-gray-200">{{ currentGrade.move }}{{ currentGrade.symbol }}</span>
-          was {{ currentGrade.name === 'inaccuracy' ? 'an' : 'a' }} {{ currentGrade.name
-          }}<template v-if="currentGrade.best">
-            . Better was <span class="text-gray-200">{{ currentGrade.best }}</span></template
-          >.
-        </p>
+
+        <!-- The coach explains the move that led to this position -->
+        <div
+          v-if="coach"
+          class="mt-3 rounded border-l-2 bg-sunken px-3 py-2"
+          :class="coach.style.border"
+          aria-live="polite"
+        >
+          <p class="text-xs font-semibold uppercase tracking-wide" :class="coach.style.color">
+            Coach · {{ coach.style.label }}
+          </p>
+          <p class="mt-1 text-gray-200">{{ coach.headline }}</p>
+          <ul v-if="coach.details.length" class="mt-1 space-y-0.5 text-gray-400">
+            <li v-for="(detail, index) in coach.details" :key="index">{{ detail }}</li>
+          </ul>
+        </div>
       </div>
 
       <table class="mt-4 w-full table-fixed text-sm">
@@ -176,7 +228,16 @@ const statRows = computed(() => {
         </thead>
         <tbody>
           <tr v-for="row in statRows" :key="row.label" class="border-t border-gray-800">
-            <th scope="row" class="py-1.5 text-left font-normal text-gray-400">{{ row.label }}</th>
+            <th scope="row" class="py-1.5 text-left font-normal text-gray-400">
+              {{ row.label
+              }}<span
+                v-if="row.hint"
+                class="ml-1 cursor-help text-gray-600"
+                :title="row.hint"
+                :aria-label="row.hint"
+                >ⓘ</span
+              >
+            </th>
             <td class="py-1.5 text-right text-gray-200">{{ row.white }}</td>
             <td class="py-1.5 pl-3 text-right text-gray-200">{{ row.black }}</td>
           </tr>

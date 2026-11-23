@@ -15,7 +15,9 @@
     "lint:eslint": "eslint . --fix --cache",
     "format": "prettier --write --experimental-cli src/",
     "dev:server": "node --watch --env-file-if-exists=.env server/index.ts",
-    "dev:db": "docker compose -f docker-compose.dev.yml up -d",
+    "dev:db": "docker compose -f docker-compose.dev.yml up -d db",
+    "dev:docker": "docker compose -f docker-compose.dev.yml --profile app up --build --renew-anon-volumes",
+    "dev:docker:down": "docker compose -f docker-compose.dev.yml --profile app down",
     "start": "node server/index.ts",
     "admin": "node server/admin.ts"
   },
@@ -28,6 +30,7 @@
     "pg": "^8.23.1"
   },
   "devDependencies": {
+    "@fontsource/eb-garamond": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@lichess-org/pgn-viewer": "^2.6.0",
     "@tailwindcss/vite": "^4.3.0",
@@ -47,6 +50,7 @@
     "eslint-plugin-vue": "~10.8.0",
     "jiti": "^2.6.1",
     "jsdom": "^29.0.2",
+    "nodemon": "^3.1.14",
     "npm-run-all2": "^8.0.4",
     "oxlint": "~1.60.0",
     "pinia": "^3.0.4",

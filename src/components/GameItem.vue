@@ -18,14 +18,14 @@ const accuracy = (value: number | null) => (value === null ? null : `${value.toF
 
 const getResultClass = (player: 'white' | 'black') => {
   if (!props.game.winner || props.game.winner === 'draw') return 'text-gray-400'
-  return props.game.winner === player ? 'text-green-500 font-bold' : 'text-red-500'
+  return props.game.winner === player ? 'text-gray-100 font-bold' : 'text-gray-500'
 }
 </script>
 
 <template>
   <router-link
     :to="{ name: 'game-detail', params: { id: game.id } }"
-    class="grid grid-cols-2 md:grid-cols-12 gap-x-4 gap-y-3 items-center p-4 bg-[#1a1d21] border border-gray-800 rounded-lg hover:border-accent hover:bg-[#252a30] transition cursor-pointer group"
+    class="grid grid-cols-2 md:grid-cols-12 gap-x-4 gap-y-3 items-center p-4 bg-surface border border-gray-800 rounded-lg hover:border-accent hover:bg-raised transition cursor-pointer group"
   >
     <!-- Metadata (Type & ECO) -->
     <div class="md:col-span-3 flex flex-col items-start min-w-0">
@@ -35,7 +35,7 @@ const getResultClass = (player: 'white' | 'black') => {
         }}</span>
         <span
           v-if="game.analyzed"
-          class="rounded bg-sky-500/15 px-1.5 text-[10px] font-semibold text-sky-300"
+          class="border border-gray-700 px-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-300"
           title="This game has a computer analysis"
           >Analyzed</span
         >
@@ -56,7 +56,7 @@ const getResultClass = (player: 'white' | 'black') => {
         <span v-if="game.white_elo" class="text-[10px] text-gray-500">({{ game.white_elo }})</span>
         <span
           v-if="accuracy(game.white_accuracy)"
-          class="ml-1 text-[10px] text-sky-300"
+          class="ml-1 text-[10px] text-gray-300"
           title="Accuracy"
           >{{ accuracy(game.white_accuracy) }}</span
         >
@@ -75,7 +75,7 @@ const getResultClass = (player: 'white' | 'black') => {
         <span v-if="game.black_elo" class="text-[10px] text-gray-500">({{ game.black_elo }})</span>
         <span
           v-if="accuracy(game.black_accuracy)"
-          class="ml-1 text-[10px] text-sky-300"
+          class="ml-1 text-[10px] text-gray-300"
           title="Accuracy"
           >{{ accuracy(game.black_accuracy) }}</span
         >

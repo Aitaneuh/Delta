@@ -18,6 +18,8 @@ import {
 import { reportGame, sideToMove } from '../services/moveScoring'
 import { legalDests, playMove, type Variation } from '../services/variations'
 import { getEcoOpeningName } from '../data/ecoOpenings'
+import { coachMove, type CoachInput } from '../services/coach'
+import { estimateElo } from '../services/eloEstimate'
 
 export type ImportPlatform = 'lichess' | 'chesscom'
 
@@ -250,6 +252,68 @@ export const useGameStore = defineStore('game', () => {
       grade,
       move: currentGame.value.moves[index]!,
       best: currentEvals.value[index]?.bestSan ?? null,
+    }
+  })
+
+  /** What the coach needs for the move that led to the position on the board. */
+  const currentCoachInput = computed<CoachInput | null>(() => {
+    if (analysisHidden.value || !currentGame.value?.analysis) return null
+
+    const variation = currentVariation.value
+    if (variation && activeVariation.value) {
+      const ply = activeVariation.value.ply
+      const fenBefore =
+        ply === 1
+          ? currentPositions.value[variation.startIndex]!.fen
+          : variation.moves[ply - 2]!.fen
+      const before =
+        ply === 1 ? currentEvals.value[variation.startIndex] : explorationEvals.value.get(fenBefore)
+      const after = explorationEvals.value.get(variation.moves[ply - 1]!.fen)
+      if (!before || !after) return null
+      const grades = variationGrades.value.get(variation.id)
+      return {
+        fenBefore,
+        san: variation.moves[ply - 1]!.san,
+        before,
+        after,
+        grade: grades?.[ply - 1] ?? null,
+        previousGrade:
+          ply === 1
+            ? analysisReport.value?.moves[variation.startIndex - 1]?.grade
+            : grades?.[ply - 2],
+      }
+    }
+
+    const index = currentMoveIndex.value - 1
+    const before = currentEvals.value[index]
+    const after = currentEvals.value[index + 1]
+    const position = currentPositions.value[index]
+    if (index < 0 || !before || !after || !position) return null
+    return {
+      fenBefore: position.fen,
+      san: currentGame.value.moves[index]!,
+      before,
+      after,
+      grade: analysisReport.value?.moves[index]?.grade ?? null,
+      previousGrade: analysisReport.value?.moves[index - 1]?.grade,
+    }
+  })
+
+  /** The coach's explanation of the move that led to the position on the board. */
+  const currentCoachComment = computed(() =>
+    currentCoachInput.value ? coachMove(currentCoachInput.value) : null,
+  )
+
+  /** A guess at the rating each side played at, once the whole game has been analyzed. */
+  const eloEstimates = computed(() => {
+    const report = analysisReport.value
+    if (!report || !currentGame.value?.analysis) return null
+    const count = (color: 'white' | 'black') =>
+      report.moves.filter((move) => move.color === color).length
+    return {
+      // The players' recorded ratings anchor the guess when the game has them
+      white: estimateElo(report.white, count('white'), currentGame.value.white_elo),
+      black: estimateElo(report.black, count('black'), currentGame.value.black_elo),
     }
   })
 
@@ -616,6 +680,8 @@ export const useGameStore = defineStore('game', () => {
     isEvaluatingVariation,
     variationGrades,
     currentMoveGrade,
+    currentCoachComment,
+    eloEstimates,
 
     // Core Engine Actions
     fetchGames,

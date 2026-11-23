@@ -47,11 +47,11 @@ const resultIcon = computed(() => {
 </script>
 
 <template>
-  <div class="bg-[#141619] border-b border-gray-800 px-4 sm:px-6 py-4">
+  <div class="bg-ink border-b border-gray-800 px-4 sm:px-6 py-4">
     <div class="max-w-7xl mx-auto flex items-center justify-between">
       <div class="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
         <router-link
-          to="/"
+          to="/explore"
           class="shrink-0 text-gray-400 hover:text-gray-200 transition flex items-center space-x-1"
         >
           <svg
@@ -80,7 +80,7 @@ const resultIcon = computed(() => {
             {{ white
             }}<span
               v-if="formatAccuracy(whiteAccuracy)"
-              class="ml-1.5 text-sm text-sky-300"
+              class="ml-1.5 text-sm text-gray-300"
               title="Accuracy"
               >{{ formatAccuracy(whiteAccuracy) }}</span
             >
@@ -88,7 +88,7 @@ const resultIcon = computed(() => {
             {{ black
             }}<span
               v-if="formatAccuracy(blackAccuracy)"
-              class="ml-1.5 text-sm text-sky-300"
+              class="ml-1.5 text-sm text-gray-300"
               title="Accuracy"
               >{{ formatAccuracy(blackAccuracy) }}</span
             >

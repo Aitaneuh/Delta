@@ -9,7 +9,7 @@ const goHome = () => {
 </script>
 
 <template>
-  <div class="bg-[#0d0f12] flex items-center justify-center px-4 sm:px-6 py-12">
+  <div class="bg-ink flex items-center justify-center px-4 sm:px-6 py-12">
     <div class="text-center">
       <div class="mb-8">
         <svg
