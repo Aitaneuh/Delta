@@ -92,7 +92,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="bg-[#0d0f12]">
+  <div class="bg-ink">
     <!-- Loading State -->
     <div v-if="gameStore.loading" class="flex items-center justify-center min-h-[60dvh]">
       <div class="text-center">

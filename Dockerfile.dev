@@ -1,0 +1,6 @@
+# Development image: dependencies only. The source code is mounted from your computer, see
+# docker-compose.dev.yml. Rebuilt by "npm run dev:docker" whenever package-lock.json changes.
+FROM node:24-alpine
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci

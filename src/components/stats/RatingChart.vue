@@ -125,7 +125,7 @@ function handleMove(event: PointerEvent) {
         aria-label="Average rating per month"
       >
         <g v-for="tick in scale.ticks" :key="tick">
-          <line :x1="LEFT" :x2="width" :y1="yAt(tick)" :y2="yAt(tick)" stroke="#2c2f35" />
+          <line :x1="LEFT" :x2="width" :y1="yAt(tick)" :y2="yAt(tick)" stroke="var(--color-gray-800)" />
           <text
             :x="LEFT - 6"
             :y="yAt(tick) + 3"
@@ -152,7 +152,7 @@ function handleMove(event: PointerEvent) {
           :x2="tooltip.x"
           :y1="PLOT_TOP"
           :y2="PLOT_BOTTOM"
-          stroke="#6b7280"
+          stroke="var(--color-gray-500)"
         />
 
         <g v-for="line in series" :key="line.mode">
@@ -171,7 +171,7 @@ function handleMove(event: PointerEvent) {
             :cy="point.y"
             r="4"
             :fill="line.color"
-            stroke="#1a1d21"
+            stroke="var(--color-surface)"
             stroke-width="2"
           />
         </g>
@@ -179,7 +179,7 @@ function handleMove(event: PointerEvent) {
 
       <div
         v-if="tooltip && tooltip.values.length"
-        class="pointer-events-none absolute top-0 z-10 whitespace-nowrap rounded border border-gray-700 bg-[#0d0f12] px-2 py-1 text-xs"
+        class="pointer-events-none absolute top-0 z-10 whitespace-nowrap rounded border border-gray-700 bg-ink px-2 py-1 text-xs"
         :style="tooltip.style"
       >
         <span class="text-gray-400">{{ tooltip.month }}</span>

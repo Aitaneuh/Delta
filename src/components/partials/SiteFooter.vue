@@ -8,13 +8,21 @@ const links = [
 </script>
 
 <template>
-  <footer class="bg-zinc-950 border-t border-gray-800 px-5 py-4">
-    <ul class="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-gray-500">
-      <li v-for="link in links" :key="link.to">
-        <router-link :to="link.to" class="hover:text-gray-300 transition">{{
-          link.label
-        }}</router-link>
-      </li>
-    </ul>
+  <footer class="border-t border-gray-800 bg-ink">
+    <div
+      class="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+    >
+      <p>
+        <span class="font-serif text-sm text-gray-300">Delta</span>
+        · Free software under the GPL-3.0. Analysis by Stockfish.
+      </p>
+      <ul class="flex flex-wrap gap-x-5 gap-y-2">
+        <li v-for="link in links" :key="link.to">
+          <router-link :to="link.to" class="transition-colors hover:text-gray-200">{{
+            link.label
+          }}</router-link>
+        </li>
+      </ul>
+    </div>
   </footer>
 </template>

@@ -38,9 +38,9 @@ function isActiveVariationMove(id: number, ply: number): boolean {
 }
 
 function gradeColor(grade: MoveGrade | null | undefined): string {
-  if (grade === 'blunder') return 'text-[#f0524f]'
-  if (grade === 'mistake') return 'text-[#ec835a]'
-  return 'text-[#fab219]'
+  if (grade === 'blunder') return 'text-blunder'
+  if (grade === 'mistake') return 'text-mistake'
+  return 'text-inaccuracy'
 }
 
 // Group moves into pairs (white, black)
@@ -96,7 +96,7 @@ watch(
 </script>
 
 <template>
-  <div class="bg-[#1a1d21] rounded-lg border border-gray-800 h-full flex flex-col">
+  <div class="bg-surface rounded-lg border border-gray-800 h-full flex flex-col">
     <div class="border-b border-gray-800 px-4 py-3">
       <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wide">
         Moves
@@ -138,7 +138,7 @@ watch(
 
       <!-- Variations played on the board, under the move they replace -->
       <div v-for="variation in variationsForRow(row)" :key="`variation-${variation.id}`"
-        class="ml-10 flex items-start gap-1 rounded border-l-2 border-gray-600 bg-[#14171a] py-1 pl-2 pr-1">
+        class="ml-10 flex items-start gap-1 rounded border-l-2 border-gray-600 bg-sunken py-1 pl-2 pr-1">
         <div class="flex-1 min-w-0 flex flex-wrap items-center gap-x-0.5 gap-y-0.5 font-mono text-xs">
           <template v-for="(move, index) in variation.moves" :key="index">
             <span v-if="move.color === 'white' || index === 0" class="text-gray-600 pl-1">

@@ -44,12 +44,12 @@ const tooltip = computed(() => {
           @pointerenter="hovered = index"
         >
           <div
-            class="w-full rounded-t-[4px] transition-opacity"
+            class="w-full rounded-t-[1px] transition-opacity"
             :class="hovered !== null && hovered !== index ? 'opacity-50' : ''"
             :style="{
               height: `${(bar.value / max) * 100}%`,
               minHeight: bar.value ? '2px' : '0',
-              backgroundColor: '#3987e5',
+              backgroundColor: 'var(--color-accent)',
             }"
           ></div>
         </div>
@@ -57,7 +57,7 @@ const tooltip = computed(() => {
 
       <div
         v-if="tooltip"
-        class="pointer-events-none absolute top-0 z-10 whitespace-nowrap rounded border border-gray-700 bg-[#0d0f12] px-2 py-1 text-xs"
+        class="pointer-events-none absolute top-0 z-10 whitespace-nowrap rounded border border-gray-700 bg-ink px-2 py-1 text-xs"
         :style="tooltip.style"
       >
         <span class="text-gray-400">{{ tooltip.bar.label }}</span>

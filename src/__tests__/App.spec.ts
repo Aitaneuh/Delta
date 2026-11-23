@@ -14,7 +14,7 @@ describe('App', () => {
       }),
     )
 
-    router.push('/')
+    router.push('/explore')
     await router.isReady()
     const wrapper = mount(App, { global: { plugins: [createPinia(), router] } })
     await flushPromises()
@@ -23,5 +23,24 @@ describe('App', () => {
     expect(wrapper.text()).toContain('Showing 0 games')
     expect(wrapper.text()).not.toContain('Sign in')
     expect(wrapper.text()).toContain('Privacy')
+  })
+})
+
+describe('Landing page', () => {
+  it('explains Delta and links to import and explore', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () => new Response(JSON.stringify({ games: [], total: 12, page: 1, pageSize: 25 })),
+      ),
+    )
+
+    await router.push('/')
+    const wrapper = mount(App, { global: { plugins: [createPinia(), router] } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('See where the game turned')
+    expect(wrapper.text()).toContain('Explore 12 games')
+    expect(wrapper.find('a[href="/import"]').exists()).toBe(true)
   })
 })

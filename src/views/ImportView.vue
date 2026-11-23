@@ -118,7 +118,7 @@ const handleAccountImport = async () => {
 
 <template>
   <div class="mx-auto container max-w-4xl px-4 sm:px-6 pb-12 pt-4">
-    <div class="bg-[#141619] border border-gray-800 rounded-lg p-4 sm:p-8 shadow-xl text-gray-300">
+    <div class="bg-ink border border-gray-800 rounded-lg p-4 sm:p-8 shadow-xl text-gray-300">
       <h1 class="text-2xl sm:text-3xl font-light text-gray-100 mb-4 tracking-wide">
         Import a game
       </h1>
@@ -128,7 +128,7 @@ const handleAccountImport = async () => {
         its link. A PGN file with several games imports all of them.
       </p>
 
-      <div class="bg-[#2b1b1b] border-l-4 border-accent p-3 rounded text-sm text-accent mb-6">
+      <div class="bg-accent/10 border-l-2 border-accent p-3 rounded text-sm text-accent mb-6">
         Imported games are public. <strong>Once a game is uploaded, it can't be deleted.</strong>
       </div>
 
@@ -168,7 +168,7 @@ const handleAccountImport = async () => {
             :class="
               platform === option.value
                 ? 'bg-accent text-white font-semibold'
-                : 'bg-[#1a1d21] text-gray-400 hover:text-gray-200'
+                : 'bg-surface text-gray-400 hover:text-gray-200'
             "
             @click="platform = option.value"
           >
@@ -185,12 +185,12 @@ const handleAccountImport = async () => {
             maxlength="30"
             :placeholder="`${platform === 'lichess' ? 'Lichess' : 'Chess.com'} username`"
             aria-label="Username"
-            class="min-w-0 sm:flex-1 bg-[#1a1d21] border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
+            class="min-w-0 sm:flex-1 bg-surface border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
           />
           <select
             v-model.number="accountCount"
             aria-label="Number of games to import"
-            class="bg-[#1a1d21] border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
+            class="bg-surface border border-gray-700 rounded p-2 text-sm outline-none focus:border-accent"
           >
             <option v-for="count in ACCOUNT_IMPORT_SIZES" :key="count" :value="count">
               {{ countLabel(count) }}
@@ -207,13 +207,13 @@ const handleAccountImport = async () => {
         <p v-if="isSubmitting && accountCount > 100" class="mt-3 text-sm text-gray-500">
           Downloading many games can take a minute.
         </p>
-        <p v-if="accountResult" role="status" class="mt-3 text-sm text-green-500">
+        <p v-if="accountResult" role="status" class="mt-3 text-sm text-gray-100">
           Imported {{ accountResult.created }} new
           {{ accountResult.created === 1 ? 'game' : 'games'
           }}<template v-if="accountResult.duplicates"
             >, {{ accountResult.duplicates }} already on the site</template
           >.
-          <router-link to="/" class="underline">View games</router-link>
+          <router-link to="/explore" class="underline">View games</router-link>
         </p>
       </form>
 
@@ -230,7 +230,7 @@ const handleAccountImport = async () => {
           v-model="pgnText"
           rows="8"
           placeholder='[Event "Live Chess"]...'
-          class="w-full bg-[#1a1d21] border border-gray-700 rounded p-3 text-sm font-mono text-gray-200 outline-none focus:border-accent resize-y transition"
+          class="w-full bg-surface border border-gray-700 rounded p-3 text-sm font-mono text-gray-200 outline-none focus:border-accent resize-y transition"
         ></textarea>
       </div>
 
@@ -240,7 +240,7 @@ const handleAccountImport = async () => {
         <span class="text-sm font-semibold text-gray-400"> Or import a PGN file </span>
 
         <div
-          class="flex min-w-0 items-center space-x-2 bg-[#1a1d21] border border-gray-700 rounded px-3 py-1.5 text-sm"
+          class="flex min-w-0 items-center space-x-2 bg-surface border border-gray-700 rounded px-3 py-1.5 text-sm"
         >
           <button
             type="button"
@@ -267,7 +267,7 @@ const handleAccountImport = async () => {
           <input
             v-model="requestAnalysis"
             type="checkbox"
-            class="w-4 h-4 rounded accent-accent bg-[#1a1d21] border-gray-700"
+            class="w-4 h-4 rounded accent-accent bg-surface border-gray-700"
           />
           <span class="text-sm font-medium text-gray-400 group-hover:text-gray-200 transition">
             Request a computer analysis (single-game imports)

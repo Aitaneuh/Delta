@@ -10,8 +10,10 @@ export default defineConfig({
   plugins: [vue(), vueDevTools(), tailwindcss()],
   server: {
     proxy: {
-      '/api': 'http://localhost:3000',
+      // The dev Docker stack points this at its API container
+      '/api': process.env.API_PROXY_TARGET ?? 'http://localhost:3000',
     },
+    watch: { usePolling: process.env.CHOKIDAR_USEPOLLING === 'true' },
   },
   resolve: {
     alias: {

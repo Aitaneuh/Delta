@@ -55,7 +55,7 @@ const formattedDate = computed(() => {
 </script>
 
 <template>
-  <div class="bg-[#1a1d21] rounded-lg border border-gray-800 p-4 sm:p-6">
+  <div class="bg-surface rounded-lg border border-gray-800 p-4 sm:p-6">
     <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
       Game Information
     </h3>
@@ -68,7 +68,7 @@ const formattedDate = computed(() => {
           <span class="text-gray-200 font-medium">{{ white }}</span>
           <span v-if="whiteElo" class="text-gray-500">({{ whiteElo }})</span>
         </div>
-        <span v-if="winner === 'white'" class="text-green-500 font-semibold">✓</span>
+        <span v-if="winner === 'white'" class="text-accent font-semibold">✓</span>
       </div>
 
       <div class="flex items-center justify-between gap-2 pb-3 border-b border-gray-800">
@@ -77,7 +77,7 @@ const formattedDate = computed(() => {
           <span class="text-gray-200 font-medium">{{ black }}</span>
           <span v-if="blackElo" class="text-gray-500">({{ blackElo }})</span>
         </div>
-        <span v-if="winner === 'black'" class="text-green-500 font-semibold">✓</span>
+        <span v-if="winner === 'black'" class="text-accent font-semibold">✓</span>
       </div>
 
       <!-- Result -->

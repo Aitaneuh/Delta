@@ -23,9 +23,9 @@ const emit = defineEmits<{
 const HEIGHT = 128
 const PLOT_BOTTOM = HEIGHT - 16
 const GRADE_COLORS: Record<MoveGrade, string> = {
-  inaccuracy: '#fab219',
-  mistake: '#ec835a',
-  blunder: '#f0524f',
+  inaccuracy: 'var(--color-inaccuracy)',
+  mistake: 'var(--color-mistake)',
+  blunder: 'var(--color-blunder)',
 }
 const LEGEND: MoveGrade[] = ['inaccuracy', 'mistake', 'blunder']
 
@@ -147,13 +147,13 @@ function handleClick(event: PointerEvent) {
           :x2="width"
           :y1="PLOT_BOTTOM / 2"
           :y2="PLOT_BOTTOM / 2"
-          stroke="#374151"
+          stroke="var(--color-gray-700)"
           stroke-dasharray="3 3"
         />
-        <line :x1="0" :x2="width" :y1="PLOT_BOTTOM" :y2="PLOT_BOTTOM" stroke="#374151" />
+        <line :x1="0" :x2="width" :y1="PLOT_BOTTOM" :y2="PLOT_BOTTOM" stroke="var(--color-gray-700)" />
 
-        <path :d="areaPath" fill="#e5e7eb" fill-opacity="0.16" />
-        <path :d="linePath" fill="none" stroke="#e5e7eb" stroke-width="2" stroke-linejoin="round" />
+        <path :d="areaPath" fill="var(--color-gray-200)" fill-opacity="0.16" />
+        <path :d="linePath" fill="none" stroke="var(--color-gray-200)" stroke-width="2" stroke-linejoin="round" />
 
         <line
           :x1="xAt(currentMoveIndex)"
@@ -171,7 +171,7 @@ function handleClick(event: PointerEvent) {
           :cy="yAt(mark.index)"
           r="4"
           :fill="mark.color"
-          stroke="#1a1d21"
+          stroke="var(--color-surface)"
           stroke-width="2"
         />
 
@@ -181,7 +181,7 @@ function handleClick(event: PointerEvent) {
           :x2="tooltip.x"
           y1="0"
           :y2="PLOT_BOTTOM"
-          stroke="#9ca3af"
+          stroke="var(--color-gray-400)"
         />
 
         <text
@@ -198,7 +198,7 @@ function handleClick(event: PointerEvent) {
 
       <div
         v-if="tooltip"
-        class="pointer-events-none absolute top-1 z-10 whitespace-nowrap rounded border border-gray-700 bg-[#0d0f12] px-2 py-1 text-xs"
+        class="pointer-events-none absolute top-1 z-10 whitespace-nowrap rounded border border-gray-700 bg-ink px-2 py-1 text-xs"
         :style="tooltip.style"
       >
         <strong class="text-gray-100">{{ tooltip.value }}</strong>

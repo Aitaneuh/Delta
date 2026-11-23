@@ -1,0 +1,55 @@
+/*
+ * Delta's board: stone-grey squares, red for anything the eye should find. Replaces the brown
+ * Lichess theme; only colors live here, chessground.base.css still handles the layout.
+ */
+cg-board {
+  --square-light: #d9d6d0;
+  --square-dark: #7b776f;
+  /* Repeats a 2x2 block: a8 light, b8 dark, a7 dark, b7 light */
+  background: repeating-conic-gradient(var(--square-dark) 0 25%, var(--square-light) 0 50%) 0 0 /
+    25% 25%;
+}
+
+cg-board square.last-move {
+  background-color: rgba(220, 47, 47, 0.3);
+}
+
+cg-board square.selected {
+  background-color: rgba(220, 47, 47, 0.45);
+}
+
+cg-board square.move-dest {
+  background: radial-gradient(rgba(10, 10, 10, 0.38) 20%, rgba(0, 0, 0, 0) 0);
+}
+
+cg-board square.oc.move-dest {
+  background: radial-gradient(transparent 0%, transparent 78%, rgba(10, 10, 10, 0.38) 78%);
+}
+
+cg-board square.move-dest:hover {
+  background: rgba(220, 47, 47, 0.3);
+}
+
+cg-board square.check {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(239, 68, 68, 1) 0%,
+    rgba(220, 47, 47, 0.9) 25%,
+    rgba(160, 20, 20, 0) 89%
+  );
+}
+
+/* Coordinates take the opposite square's color so they stay readable */
+.orientation-white .ranks :nth-child(odd),
+.orientation-white .files :nth-child(even),
+.orientation-black .ranks :nth-child(even),
+.orientation-black .files :nth-child(odd) {
+  color: var(--square-light, #d9d6d0);
+}
+
+.orientation-white .ranks :nth-child(even),
+.orientation-white .files :nth-child(odd),
+.orientation-black .ranks :nth-child(odd),
+.orientation-black .files :nth-child(even) {
+  color: #5a5650;
+}

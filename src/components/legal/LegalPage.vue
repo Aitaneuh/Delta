@@ -16,27 +16,27 @@ const LAST_UPDATED = 'November 8, 2026'
 
 <style scoped>
 .legal {
-  color: #d1d5db;
+  color: var(--color-gray-300);
   overflow-wrap: anywhere;
 }
 
 h1 {
   font-size: 1.75rem;
   font-weight: 300;
-  color: #f3f4f6;
+  color: var(--color-gray-100);
 }
 
 .updated {
   margin-bottom: 1.5rem;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .legal :deep(h2) {
   margin: 1.75rem 0 0.5rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: var(--color-gray-100);
 }
 
 .legal :deep(p),
